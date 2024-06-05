@@ -251,12 +251,16 @@ struct swtch {
 	Symbol *labels;
 };
 struct symbol {
-	char *name;
-	int scope;
-	Coordinate src;
+	char *name; /* For identifiers and keywords, it is the name used in
+        the source code. For generated identifiers, such as structures
+        without tags, name is a digit string. */
+	int scope;  /* classifies each symbol as constant, label, global,
+        parameter, local. A local declared at nesting level k
+        has a scope equal to LOCAL+k, see the enum below. */
+	Coordinate src; /* point in the source that defines this symbol. */
 	Symbol up;
 	List uses;
-	int sclass;
+	int sclass; /* AUTO,REGISTER,STATIC,EXTERN,TYPEDEF,ENUM */
 	unsigned structarg:1;
 
 	unsigned addressed:1;
@@ -264,7 +268,7 @@ struct symbol {
 	unsigned temporary:1;
 	unsigned generated:1;
 	unsigned defined:1;
-	Type type;
+	Type type; /* var, func, const, struct, union, enum. */
 	float ref;
 	union {
 		struct {
