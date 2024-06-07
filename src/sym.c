@@ -12,7 +12,9 @@ struct table {
 		struct symbol sym;
 		struct entry *link;
 	} *buckets[256];
-	Symbol all;
+	Symbol all; /* point to the last variable in the currenct scope,
+	and we can use up pointer inside struct symbol to get all the
+	variables. */
 };
 #define HASHSIZE NELEMS(((Table)0)->buckets)
 static struct table
@@ -21,11 +23,11 @@ static struct table
 	ids = { GLOBAL },
 	tys = { GLOBAL };
 Table constants   = &cns;
-Table externals   = &ext;
+Table externals   = &ext;    // for extern
 Table identifiers = &ids;
 Table globals     = &ids;
-Table types       = &tys;
-Table labels;
+Table types       = &tys;    // for tags
+Table labels;                // for labels
 int level = GLOBAL;
 static int tempid;
 List loci, symbols;
@@ -37,6 +39,8 @@ Table newtable(int arena) {
 	return new;
 }
 
+/* All dynamically allocated tables are discarded after compiling each
+ function, so they are allocated in the FUNC arena. */
 Table table(Table tp, int level) {
 	Table new = newtable(FUNC);
 	new->previous = tp;
@@ -45,6 +49,7 @@ Table table(Table tp, int level) {
 		new->all = tp->all;
 	return new;
 }
+
 void foreach(Table tp, int lev, void (*apply)(Symbol, void *), void *cl) {
 	assert(tp);
 	while (tp && tp->level > lev)
@@ -60,10 +65,12 @@ void foreach(Table tp, int lev, void (*apply)(Symbol, void *), void *cl) {
 		src = sav;
 	}
 }
+
 void enterscope(void) {
 	if (++level == LOCAL)
 		tempid = 0;
 }
+
 void exitscope(void) {
 	rmtypes(level);
 	if (types->level == level)
@@ -83,11 +90,14 @@ void exitscope(void) {
 	assert(level >= GLOBAL);
 	--level;
 }
+
 Symbol install(const char *name, Table *tpp, int level, int arena) {
 	Table tp = *tpp;
 	struct entry *p;
 	unsigned h = (unsigned long)name&(HASHSIZE-1);
 
+	/* a zero value for leve1 indicates that name should be
+	 installed in *tpp. */
 	assert(level == 0 || level >= tp->level);
 	if (level > 0 && tp->level < level)
 		tp = *tpp = table(tp, level);
@@ -100,6 +110,7 @@ Symbol install(const char *name, Table *tpp, int level, int arena) {
 	tp->buckets[h] = p;
 	return &p->sym;
 }
+
 Symbol relocate(const char *name, Table src, Table dst) {
 	struct entry *p, **q;
 	Symbol *r;
@@ -130,6 +141,7 @@ Symbol relocate(const char *name, Table src, Table dst) {
 	dst->all = &p->sym;
 	return &p->sym;
 }
+
 Symbol lookup(const char *name, Table tp) {
 	struct entry *p;
 	unsigned h = (unsigned long)name&(HASHSIZE-1);
@@ -142,12 +154,14 @@ Symbol lookup(const char *name, Table tp) {
 	while ((tp = tp->previous) != NULL);
 	return NULL;
 }
+
 int genlabel(int n) {
 	static int label = 1;
 
 	label += n;
 	return label - n;
 }
+
 Symbol findlabel(int lab) {
 	struct entry *p;
 	unsigned h = lab&(HASHSIZE-1);
@@ -167,6 +181,7 @@ Symbol findlabel(int lab) {
 	(*IR->defsymbol)(&p->sym);
 	return &p->sym;
 }
+
 Symbol constant(Type ty, Value v) {
 	struct entry *p;
 	unsigned h = v.u&(HASHSIZE-1);
@@ -174,7 +189,7 @@ Symbol constant(Type ty, Value v) {
 
 	ty = unqual(ty);
 	for (p = constants->buckets[h]; p; p = p->link)
-		if (eqtype(ty, p->sym.type, 1))
+		if (eqtype(ty, p->sym.type, 1)) {
 			switch (ty->op) {
 			case INT:      if (equalp(i)) return &p->sym; break;
 			case UNSIGNED: if (equalp(u)) return &p->sym; break;
@@ -194,6 +209,7 @@ Symbol constant(Type ty, Value v) {
 			case POINTER:  if (equalp(p)) return &p->sym; break;
 			default: assert(0);
 			}
+		}
 	NEW0(p, PERM);
 	p->sym.name = vtoa(ty, v);
 	p->sym.scope = CONSTANTS;
@@ -209,12 +225,14 @@ Symbol constant(Type ty, Value v) {
 	p->sym.defined = 1;
 	return &p->sym;
 }
+
 Symbol intconst(int n) {
 	Value v;
 
 	v.i = n;
 	return constant(inttype, v);
 }
+
 Symbol genident(int scls, Type ty, int lev) {
 	Symbol p;
 
@@ -241,6 +259,7 @@ Symbol temporary(int scls, Type ty) {
 	p->generated = 1;
 	return p;
 }
+
 Symbol newtemp(int sclass, int tc, int size) {
 	Symbol p = temporary(sclass, btot(tc, size));
 
@@ -265,6 +284,7 @@ void use(Symbol p, Coordinate src) {
 	*cp = src;
 	p->uses = append(cp, p->uses);
 }
+
 /* findtype - find type ty in identifiers */
 Symbol findtype(Type ty) {
 	Table tp = identifiers;

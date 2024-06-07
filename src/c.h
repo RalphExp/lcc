@@ -258,7 +258,8 @@ struct symbol {
         parameter, local. A local declared at nesting level k
         has a scope equal to LOCAL+k, see the enum below. */
 	Coordinate src; /* point in the source that defines this symbol. */
-	Symbol up;
+	Symbol up; /* chains together all symbols in a symbol table, starting
+	    with the last one installed. */
 	List uses;
 	int sclass; /* AUTO,REGISTER,STATIC,EXTERN,TYPEDEF,ENUM */
 	unsigned structarg:1;
