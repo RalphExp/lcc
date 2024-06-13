@@ -26,7 +26,7 @@ Table constants   = &cns;
 Table externals   = &ext;    // for extern
 Table identifiers = &ids;
 Table globals     = &ids;
-Table types       = &tys;    // for tags
+Table types       = &tys;    // for types, see types.c
 Table labels;                // for labels
 int level = GLOBAL;
 static int tempid;

@@ -53,10 +53,10 @@ static Type xxinit(int op, char *name, Metrics m) {
 		p->u.limits.min.u = 0;
 		break;
 	case FLOAT:
-		if (ty->size == sizeof (float))
-			p->u.limits.max.d =  FLT_MAX;
-		else if (ty->size == sizeof (double))
-			p->u.limits.max.d =  DBL_MAX;
+		if (ty->size == sizeof(float))
+			p->u.limits.max.d = FLT_MAX;
+		else if (ty->size == sizeof(double))
+			p->u.limits.max.d = DBL_MAX;
 		else
 			p->u.limits.max.d = LDBL_MAX;
 		p->u.limits.min.d = -p->u.limits.max.d;
@@ -65,6 +65,8 @@ static Type xxinit(int op, char *name, Metrics m) {
 	}
 	return ty;
 }
+
+// sym: e.g. char, int, unsign, ... etc
 static Type type(int op, Type ty, int size, int align, void *sym) {
 	unsigned h = (op^((unsigned long)ty>>3))
 &(NELEMS(typetable)-1);
@@ -90,6 +92,7 @@ static Type type(int op, Type ty, int size, int align, void *sym) {
 	typetable[h] = tn;
 	return &tn->type;
 }
+
 void type_init(int argc, char *argv[]) {
 	static int inited;
 	int i;
@@ -173,30 +176,38 @@ void type_init(int argc, char *argv[]) {
 	}
 #undef xx
 }
+
+/* If the types associated with structure, union, and enumeration tags
+ * must be removed from typetable when their associated symbol-table
+ * entries are removed from types by exitscope. */
 void rmtypes(int lev) {
 	if (maxlevel >= lev) {
 		int i;
 		maxlevel = 0;
 		for (i = 0; i < NELEMS(typetable); i++) {
 			struct entry *tn, **tq = &typetable[i];
-			while ((tn = *tq) != NULL)
+			while ((tn = *tq) != NULL) {
 				if (tn->type.op == FUNCTION)
 					tq = &tn->link;
 				else if (tn->type.u.sym && tn->type.u.sym->scope >= lev)
 					*tq = tn->link;
 				else {
-					if (tn->type.u.sym && tn->type.u.sym->scope > maxlevel)
+					if (tn->type.u.sym && tn->type.u.sym->scope > maxlevel) {
+						/* recalculate max level */
 						maxlevel = tn->type.u.sym->scope;
+					}
 					tq = &tn->link;
 				}
-
+			}
 		}
 	}
 }
+
 Type ptr(Type ty) {
 	return type(POINTER, ty, IR->ptrmetric.size,
 		IR->ptrmetric.align, pointersym);
 }
+
 Type deref(Type ty) {
 	if (isptr(ty))
 		ty = ty->type;
@@ -204,6 +215,7 @@ Type deref(Type ty) {
 		error("type error: %s\n", "pointer expected");
 	return isenum(ty) ? unqual(ty)->type : ty;
 }
+
 Type array(Type ty, int n, int a) {
 	assert(ty);
 	if (isfunc(ty)) {
@@ -226,12 +238,14 @@ Type array(Type ty, int n, int a) {
 	return type(ARRAY, ty, n*ty->size,
 		a ? a : ty->align, NULL);
 }
+
 Type atop(Type ty) {
 	if (isarray(ty))
 		return ptr(ty->type);
 	error("type error: %s\n", "array expected");
 	return ptr(ty);
 }
+
 Type qual(int op, Type ty) {
 	if (isarray(ty))
 		ty = type(ARRAY, qual(op, ty->type), ty->size,
@@ -250,6 +264,7 @@ Type qual(int op, Type ty) {
 	}
 	return ty;
 }
+
 Type func(Type ty, Type *proto, int style) {
 	if (ty && (isarray(ty) || isfunc(ty)))
 		error("illegal return type `%t'\n", ty);
@@ -258,12 +273,14 @@ Type func(Type ty, Type *proto, int style) {
 	ty->u.f.oldstyle = style;
 	return ty;
 }
+
 Type freturn(Type ty) {
 	if (isfunc(ty))
 		return ty->type;
 	error("type error: %s\n", "function expected");
 	return inttype;
 }
+
 int variadic(Type ty) {
 	if (isfunc(ty) && ty->u.f.proto) {
 		int i;
@@ -273,6 +290,7 @@ int variadic(Type ty) {
 	}
 	return 0;
 }
+
 Type newstruct(int op, char *tag) {
 	Symbol p;
 
@@ -294,6 +312,7 @@ Type newstruct(int op, char *tag) {
 	p->src = src;
 	return p->type;
 }
+
 Field newfield(char *name, Type ty, Type fty) {
 	Field p, *q = &ty->u.sym->u.s.flist;
 
@@ -314,6 +333,7 @@ Field newfield(char *name, Type ty, Type fty) {
 	}								/* omit */
 	return p;
 }
+
 int eqtype(Type ty1, Type ty2, int ret) {
 	if (ty1 == ty2)
 		return 1;
@@ -360,6 +380,7 @@ int eqtype(Type ty1, Type ty2, int ret) {
 	}
 	assert(0); return 0;
 }
+
 Type promote(Type ty) {
 	ty = unqual(ty);
 	switch (ty->op) {
@@ -381,6 +402,7 @@ Type promote(Type ty) {
 	}
 	return ty;
 }
+
 Type signedint(Type ty) {
 	if (ty->op == INT)
 		return ty;
@@ -392,6 +414,7 @@ Type signedint(Type ty) {
 #undef xx
 	assert(0); return NULL;
 }
+
 Type compose(Type ty1, Type ty2) {
 	if (ty1 == ty2)
 		return ty1;
@@ -432,6 +455,7 @@ Type compose(Type ty1, Type ty2) {
 	}
 	assert(0); return NULL;
 }
+
 int ttob(Type ty) {
 	switch (ty->op) {
 	case CONST: case VOLATILE: case CONST+VOLATILE:
@@ -449,6 +473,7 @@ int ttob(Type ty) {
 	}
 	assert(0); return INT;
 }
+
 Type btot(int op, int size) {
 #define xx(ty) if (size == (ty)->size) return ty;
 	switch (optype(op)) {
@@ -483,6 +508,7 @@ Type btot(int op, int size) {
 #undef xx
 	assert(0); return 0;
 }
+
 int hasproto(Type ty) {
 	if (ty == 0)
 		return 1;
@@ -498,6 +524,7 @@ int hasproto(Type ty) {
 	}
 	assert(0); return 0;
 }
+
 /* fieldlist - construct a flat list of fields in type ty */
 Field fieldlist(Type ty) {
 	return ty->u.sym->u.s.flist;
@@ -756,4 +783,3 @@ char *typestring(Type ty, char *str) {
 	}
 	assert(0); return 0;
 }
-
