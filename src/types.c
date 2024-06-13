@@ -25,7 +25,7 @@ Type shorttype;			/* signed short int */
 Type signedchar;		/* signed char */
 Type unsignedchar;		/* unsigned char */
 Type unsignedlong;		/* unsigned long int */
-Type unsignedlonglong;		/* unsigned long long int */
+Type unsignedlonglong;	/* unsigned long long int */
 Type unsignedshort;		/* unsigned short int */
 Type unsignedtype;		/* unsigned int */
 Type funcptype;			/* void (*)() */
@@ -70,6 +70,10 @@ static Type type(int op, Type ty, int size, int align, void *sym) {
 &(NELEMS(typetable)-1);
 	struct entry *tn;
 
+	/* type always builds new types for function types and for incomplete
+	 * array types. When type builds a new type, it initializes the fields
+	 * specified by the arguments, clears the x field, adds the type to the
+	 *  appropriate hash chain, and returns the new Type. */
 	if (op != FUNCTION && (op != ARRAY || size > 0))
 		for (tn = typetable[h]; tn; tn = tn->link)
 			if (tn->type.op    == op   && tn->type.type  == ty

@@ -329,8 +329,8 @@ enum {
 	FIELD=43<<4
 };
 struct type {
-	int op;
-	Type type;
+	int op; 	// The op field holds an integer operator code
+	Type type;  // and the type field holds the operand.
 	int align;
 	int size;
 	union {

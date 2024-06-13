@@ -317,9 +317,9 @@ Symbol mkstr(char *str) {
 Symbol mksymbol(int sclass, const char *name, Type ty) {
 	Symbol p;
 
-	if (sclass == EXTERN)
+	if (sclass == EXTERN) {
 		p = install(string(name), &globals, GLOBAL, PERM);
-	else {
+	} else {
 		NEW0(p, PERM);
 		p->name = string(name);
 		p->scope = GLOBAL;
