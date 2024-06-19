@@ -205,7 +205,7 @@ void rmtypes(int lev) {
 
 Type ptr(Type ty) {
 	return type(POINTER, ty, IR->ptrmetric.size,
-		IR->ptrmetric.align, pointersym);
+		IR->ptrmetric.align, pointersym); /* "T*"" */
 }
 
 Type deref(Type ty) {
@@ -216,6 +216,7 @@ Type deref(Type ty) {
 	return isenum(ty) ? unqual(ty)->type : ty;
 }
 
+/* create T[n] with alignment a */
 Type array(Type ty, int n, int a) {
 	assert(ty);
 	if (isfunc(ty)) {
