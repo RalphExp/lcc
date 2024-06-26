@@ -283,7 +283,8 @@ struct symbol {
 			unsigned cfields:1;
 			unsigned vfields:1;
 			Table ftab;		/* omit */
-			Field flist;
+			Field flist;    /* if this is a struct/union, flist are
+			                the fields inside this struct/union. */
 		} s;
 		int value;
 		Symbol *idlist;
