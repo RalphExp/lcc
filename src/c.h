@@ -58,8 +58,11 @@
 #define isscalar(t)   (unqual(t)->op <= POINTER \
                     || unqual(t)->op == ENUM)
 #define isenum(t)     (unqual(t)->op == ENUM)
-#define fieldsize(p)  (p)->bitsize
-#define fieldright(p) ((p)->lsb - 1)
+#define fieldsize(p)  (p)->bitsize   // fields i ze returns the bi ts i ze field,
+                                     // which holds the size of the bit field in bits.
+#define fieldright(p) ((p)->lsb - 1) // field right is the number of bits to the right of a bit field,
+                                     // and is used to shift the field over to the least significant
+									 // bits of a signed or unsigned integer.
 #define fieldleft(p)  (8*(p)->type->size - \
                         fieldsize(p) - fieldright(p))
 #define fieldmask(p)  (~(fieldsize(p) < 8*unsignedtype->size ? ~0u<<fieldsize(p) : 0u))
@@ -331,6 +334,9 @@ enum {
 struct type {
 	int op; 	// The op field holds an integer operator code
 	Type type;  // and the type field holds the operand.
+	            // if this is a function then type is the return
+				// value's type and f. proto points to a null-terminated
+				// array of Types;
 	int align;
 	int size;
 	union {

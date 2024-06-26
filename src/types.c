@@ -299,6 +299,9 @@ Type newstruct(int op, char *tag) {
 	if (*tag == 0)
 		tag = stringd(genlabel(1));
 	else
+		/* Arguments and argument types have scope PARAM, and locals
+		 * have scopes beginning at PARAM+1, ANSI C specifies that
+		 * arguments and top-level locals are in the same scope. */
 		if ((p = lookup(tag, types)) != NULL && (p->scope == level
 		|| p->scope == PARAM && level == PARAM+1)) {
 			if (p->type->op == op && !p->defined)
