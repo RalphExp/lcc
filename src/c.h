@@ -287,7 +287,7 @@ struct symbol {
 			                the fields inside this struct/union. */
 		} s;
 		int value;
-		Symbol *idlist;
+		Symbol *idlist;    /* for enum */
 		struct {
 			Value min, max;
 		} limits;
