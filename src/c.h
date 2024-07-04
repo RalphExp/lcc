@@ -104,6 +104,11 @@ typedef struct {
 
 #include "config.h"
 typedef struct metrics {
+	/* The outofline flag controls the placements of constants of
+	 * the associated type. If outofline is one, constants cannot
+	 * appear in DAGs; such constants are placed in anonymous static
+	 * variables and their values are accessed by fetching the
+	 * variables. Each primitive type has a metric. */
 	unsigned char size, align, outofline;
 } Metrics;
 typedef struct interface {

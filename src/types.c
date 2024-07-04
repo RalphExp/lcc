@@ -373,6 +373,8 @@ int eqtype(Type ty1, Type ty2, int ret) {
 				// one of them is variadic, return false
 				if (variadic(p1 ? ty1 : ty2))
 					return 0;
+
+				// XXX: ??
 				if (p1 == NULL)
 					p1 = p2;
 				for ( ; *p1; p1++) {
@@ -399,7 +401,7 @@ Type promote(Type ty) {
 			return inttype;
 		break;
 	case UNSIGNED:
-		if (ty->size < inttype->size)
+		if (ty->size < inttype->size) // size of bytes
 			return inttype;
 		if (ty->size < unsignedtype->size)
 			return unsignedtype;
@@ -445,14 +447,14 @@ Type compose(Type ty1, Type ty2) {
 			 Type ty   = compose(ty1->type, ty2->type);
 			 List tlist = NULL;
 			 if (p1 == NULL && p2 == NULL)
-			 	return func(ty, NULL, 1);
+				return func(ty, NULL, 1); // old style
 			 if (p1 && p2 == NULL)
 			 	return func(ty, p1, ty1->u.f.oldstyle);
 			 if (p2 && p1 == NULL)
 			 	return func(ty, p2, ty2->u.f.oldstyle);
 			 for ( ; *p1 && *p2; p1++, p2++) {
 			 	Type ty = compose(unqual(*p1), unqual(*p2));
-			 	if (isconst(*p1)    || isconst(*p2))
+				if (isconst(*p1) || isconst(*p2))
 			 		ty = qual(CONST, ty);
 			 	if (isvolatile(*p1) || isvolatile(*p2))
 			 		ty = qual(VOLATILE, ty);
@@ -461,7 +463,8 @@ Type compose(Type ty1, Type ty2) {
 			 assert(*p1 == NULL && *p2 == NULL);
 			 return func(ty, ltov(&tlist, PERM), 0); }
 	}
-	assert(0); return NULL;
+	assert(0);
+	return NULL;
 }
 
 int ttob(Type ty) {
@@ -479,7 +482,8 @@ int ttob(Type ty) {
 	case ENUM:
 		return INT + sizeop(inttype->size);
 	}
-	assert(0); return INT;
+	assert(0);
+	return INT;
 }
 
 Type btot(int op, int size) {
