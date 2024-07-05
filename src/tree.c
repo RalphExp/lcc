@@ -132,14 +132,14 @@ Tree root(Tree p) {
 char *opname(int op) {
 	static char *opnames[] = {
 	"",
-	"CNST",
+	"CNST",      // constant
 	"ARG",
 	"ASGN",
-	"INDIR",
-	"CVC",
-	"CVD",
-	"CVF",
-	"CVI",
+	"INDIR",     // accepts an address an yields the value at that address
+	"CVC",       // convert from char
+	"CVD",       // convert from double
+	"CVF",       // convert from float
+	"CVI",       // convert from int
 	"CVP",
 	"CVS",
 	"CVU",
@@ -147,16 +147,16 @@ char *opname(int op) {
 	"CALL",
 	"*LOAD*",
 	"RET",
-	"ADDRG",
-	"ADDRF",
-	"ADDRL",
+	"ADDRG",     // address of a global
+	"ADDRF",     // address of a function parameter
+	"ADDRL",     // address of a local
 	"ADD",
 	"SUB",
 	"LSH",
 	"MOD",
 	"RSH",
 	"BAND",
-	"BCOM",
+	"BCOM",      // bitwise complement
 	"BOR",
 	"BXOR",
 	"DIV",

@@ -181,11 +181,15 @@ enum {
 	LAST
 };
 struct node {
-	short op;
-	short count;
+	short op;		/* The op field holds a dag operator. The last character of
+					 * each is a type suffix from the list in the type definition,
+					 * see the following enumeration. */
+	short count;    /* count records the number of times the value of this
+					 * node is used or referred to by others. Only references
+					 * from kids count. */
  	Symbol syms[3];
 	Node kids[2];
-	Node link;
+	Node link;      /* link points to the root of the next dag in the forest. */
 	Xnode x;
 };
 enum {
@@ -306,7 +310,8 @@ struct symbol {
 			int ncalls;
 			Symbol *callee;
 		} f;
-		int seg;
+		int seg;           /* For global and static vari- ables, u.seg gives the logical
+		                    * segment in which the variable is defined. */
 		Symbol alias;
 		struct {
 			Node cse;
