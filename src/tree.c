@@ -134,16 +134,16 @@ char *opname(int op) {
 	"",
 	"CNST",      // constant
 	"ARG",
-	"ASGN",
+	"ASGN",      // stores the value of kids[1] into the cell addressed by kids[O].
 	"INDIR",     // accepts an address an yields the value at that address
 	"CVC",       // convert from char
 	"CVD",       // convert from double
 	"CVF",       // convert from float
 	"CVI",       // convert from int
-	"CVP",
-	"CVS",
-	"CVU",
-	"NEG",
+	"CVP",       // convert from pointer
+	"CVS",       // convert from short
+	"CVU",       // convert from unsigned
+	"NEG",       // negation
 	"CALL",
 	"*LOAD*",
 	"RET",
@@ -168,7 +168,7 @@ char *opname(int op) {
 	"LT",
 	"NE",
 	"JUMP",
-	"LABEL",
+	"LABEL",     // defines the label given by syms[O], and is otherwise a no-op.
 	"AND",
 	"NOT",
 	"OR",
