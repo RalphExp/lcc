@@ -1,4 +1,6 @@
 # $Id$
+BUILDDIR=./build
+HOSTFILE=./etc/linux.c
 A=.a
 O=.o
 E=
