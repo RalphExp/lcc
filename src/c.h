@@ -129,31 +129,31 @@ typedef struct interface {
 	unsigned left_to_right:1;
 	unsigned wants_dag:1;
 	unsigned unsigned_char:1;
-void (*address)(Symbol p, Symbol q, long n);
-void (*blockbeg)(Env *);
-void (*blockend)(Env *);
-void (*defaddress)(Symbol);
-void (*defconst)  (int suffix, int size, Value v);
-void (*defstring)(int n, char *s);
-void (*defsymbol)(Symbol);
-void (*emit)    (Node);
-void (*export)(Symbol);
-void (*function)(Symbol, Symbol[], Symbol[], int);
-Node (*gen)     (Node);
-void (*global)(Symbol);
-void (*import)(Symbol);
-void (*local)(Symbol);
-void (*progbeg)(int argc, char *argv[]);
-void (*progend)(void);
-void (*segment)(int);
-void (*space)(int);
-void (*stabblock)(int, int, Symbol*);
-void (*stabend)  (Coordinate *, Symbol, Coordinate **, Symbol *, Symbol *);
-void (*stabfend) (Symbol, int);
-void (*stabinit) (char *, int, char *[]);
-void (*stabline) (Coordinate *);
-void (*stabsym)  (Symbol);
-void (*stabtype) (Symbol);
+	void (*address)(Symbol p, Symbol q, long n);
+	void (*blockbeg)(Env *);
+	void (*blockend)(Env *);
+	void (*defaddress)(Symbol);
+	void (*defconst)  (int suffix, int size, Value v);
+	void (*defstring)(int n, char *s);
+	void (*defsymbol)(Symbol);
+	void (*emit)    (Node);
+	void (*export)(Symbol);
+	void (*function)(Symbol, Symbol[], Symbol[], int);
+	Node (*gen)     (Node);
+	void (*global)(Symbol);
+	void (*import)(Symbol);
+	void (*local)(Symbol);
+	void (*progbeg)(int argc, char *argv[]);
+	void (*progend)(void);
+	void (*segment)(int);
+	void (*space)(int);
+	void (*stabblock)(int, int, Symbol*);
+	void (*stabend)  (Coordinate *, Symbol, Coordinate **, Symbol *, Symbol *);
+	void (*stabfend) (Symbol, int);
+	void (*stabinit) (char *, int, char *[]);
+	void (*stabline) (Coordinate *);
+	void (*stabsym)  (Symbol);
+	void (*stabtype) (Symbol);
 	Xinterface x;
 } Interface;
 typedef struct binding {
@@ -263,17 +263,17 @@ struct swtch {
 	Symbol *labels;
 };
 struct symbol {
-	char *name; /* For identifiers and keywords, it is the name used in
+	char *name; /* ch5. For identifiers and keywords, it is the name used in
         the source code. For generated identifiers, such as structures
         without tags, name is a digit string. */
-	int scope;  /* classifies each symbol as constant, label, global,
+	int scope;  /* ch5. classifies each symbol as constant, label, global,
         parameter, local. A local declared at nesting level k
         has a scope equal to LOCAL+k, see the enum below. */
 	Coordinate src; /* point in the source that defines this symbol. */
 	Symbol up; /* chains together all symbols in a symbol table, starting
 	    with the last one installed. */
 	List uses;
-	int sclass; /* AUTO,REGISTER,STATIC,EXTERN,TYPEDEF,ENUM */
+	int sclass; /* ch5. AUTO,REGISTER,STATIC,EXTERN,TYPEDEF,ENUM */
 	unsigned structarg:1;
 
 	unsigned addressed:1;
@@ -285,7 +285,10 @@ struct symbol {
 	float ref;
 	union {
 		struct {
-			int label;
+			int label;      /* Labels have a scope equal to LABELS. The u.l.label
+                             * field is a unique numeric value that identifies the
+                             * label, and name is the string representation of that
+                             * value. Labels have no type or sclass*/
 			Symbol equatedto;
 		} l;
 		struct {
@@ -296,11 +299,12 @@ struct symbol {
 			                the fields inside this struct/union. */
 		} s;
 		int value;
-		Symbol *idlist;    /* for enum */
+		Symbol *idlist;     /* for enum */
 		struct {
 			Value min, max;
 		} limits;
-		struct {
+		struct {            /* Constants have a scope equal to CONSTANTS, and an
+                             * sclass equal to STATIC*/
 			Value v;
 			Symbol loc;
 		} c;
@@ -310,11 +314,15 @@ struct symbol {
 			int ncalls;
 			Symbol *callee;
 		} f;
-		int seg;           /* For global and static vari- ables, u.seg gives the logical
+		int seg;           /* ch5. For global and static vari- ables, u.seg gives the logical
 		                    * segment in which the variable is defined. */
 		Symbol alias;
 		struct {
-			Node cse;
+			Node cse;      /* ch5. If the interface flag wants_dag is zero, the front end
+                            * generates explicit temporary variables to hold common
+                            * subexpressions - those used more than once. It sets the
+                            * u.t.cse fields of these symbols to the dag nodes that compute
+                            * the values stored in them. */
 			int replace;
 			Symbol next;
 		} t;

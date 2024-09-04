@@ -12,7 +12,7 @@ struct table {
 		struct symbol sym;
 		struct entry *link;
 	} *buckets[256];
-	Symbol all; /* point to the last variable in the currenct scope,
+	Symbol all; /* ch3. point to the last variable in the currenct scope,
 	and we can use up pointer inside struct symbol to get all the
 	variables. */
 };
