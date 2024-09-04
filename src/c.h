@@ -180,16 +180,21 @@ enum {
 #include "token.h"
 	LAST
 };
+
+/* ch5: Executable code is specified by dags. A function body is a sequence, or
+ * forest, of dags, each of which is passed to the back end via gen. Dag
+ * nodes, sometimes called nodes, are defined as follows: */
 struct node {
-	short op;		/* The op field holds a dag operator. The last character of
+	short op;		/* ch5: The op field holds a dag operator. The last character of
 					 * each is a type suffix from the list in the type definition,
 					 * see the following enumeration. */
-	short count;    /* count records the number of times the value of this
+	short count;    /* ch5: count records the number of times the value of this
 					 * node is used or referred to by others. Only references
 					 * from kids count. */
- 	Symbol syms[3];
-	Node kids[2];
-	Node link;      /* link points to the root of the next dag in the forest. */
+ 	Symbol syms[3]; /* Some dag operators also take one or two symbol-table pointers
+	                 * as operands; these appear in syms. */
+	Node kids[2];   /* ch5: The elements of kids point to the operand nodes */
+	Node link;      /* ch5: link points to the root of the next dag in the forest. */
 	Xnode x;
 };
 enum {
@@ -263,10 +268,10 @@ struct swtch {
 	Symbol *labels;
 };
 struct symbol {
-	char *name; /* ch5. For identifiers and keywords, it is the name used in
+	char *name; /* ch5: For identifiers and keywords, it is the name used in
         the source code. For generated identifiers, such as structures
         without tags, name is a digit string. */
-	int scope;  /* ch5. classifies each symbol as constant, label, global,
+	int scope;  /* ch5: classifies each symbol as constant, label, global,
         parameter, local. A local declared at nesting level k
         has a scope equal to LOCAL+k, see the enum below. */
 	Coordinate src; /* point in the source that defines this symbol. */
@@ -285,7 +290,7 @@ struct symbol {
 	float ref;
 	union {
 		struct {
-			int label;      /* Labels have a scope equal to LABELS. The u.l.label
+			int label;      /* ch5: Labels have a scope equal to LABELS. The u.l.label
                              * field is a unique numeric value that identifies the
                              * label, and name is the string representation of that
                              * value. Labels have no type or sclass*/
@@ -303,8 +308,11 @@ struct symbol {
 		struct {
 			Value min, max;
 		} limits;
-		struct {            /* Constants have a scope equal to CONSTANTS, and an
-                             * sclass equal to STATIC*/
+		struct {            /* ch5: Constants have a scope equal to CONSTANTS, and an
+                             * sclass equal to STATIC, The actual value of the
+                             * constant is stored in the u.c.v field, which is defined on
+                             * If a variable is generated to hold the constant, u.c.loc 
+                             * points to the symbol-table entry for that variable.*/
 			Value v;
 			Symbol loc;
 		} c;
