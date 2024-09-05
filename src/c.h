@@ -123,11 +123,11 @@ typedef struct interface {
 	Metrics ptrmetric;
 	Metrics structmetric;
 	unsigned little_endian:1;
-	unsigned mulops_calls:1;
-	unsigned wants_callb:1;
-	unsigned wants_argb:1;
-	unsigned left_to_right:1;
-	unsigned wants_dag:1;
+	unsigned mulops_calls:1;    // ch5: for simulation
+	unsigned wants_callb:1;     // ch5: tells the front end to emit CALLB nodes to invoke functions that return structures.
+	unsigned wants_argb:1;      // ch5: tells the front end to emit ARGB nodes to pass structure arguments
+	unsigned left_to_right:1;   // ch5: tells the front end to evaluate and to present the arguments to the backend left to right.
+	unsigned wants_dag:1;       // ch5: tells the front end to pass dags to the back end.
 	unsigned unsigned_char:1;
 	void (*address)(Symbol p, Symbol q, long n);
 	void (*blockbeg)(Env *);
@@ -635,4 +635,3 @@ extern Type qual(int, Type);
 extern void rmtypes(int);
 extern int ttob(Type);
 extern int variadic(Type);
-
