@@ -129,7 +129,11 @@ typedef struct interface {
 	unsigned left_to_right:1;   // ch5: tells the front end to evaluate and to present the arguments to the backend left to right.
 	unsigned wants_dag:1;       // ch5: tells the front end to pass dags to the back end.
 	unsigned unsigned_char:1;
-	void (*address)(Symbol p, Symbol q, long n);
+	void (*address)(Symbol p, Symbol q, long n); /* ch5: to initialize q to a symbol
+                            * that represents an address of the form x+n,
+                            * where x is the address represented by p and n
+                            * is positive or negative. */
+
 	void (*blockbeg)(Env *);
 	void (*blockend)(Env *);
 	void (*defaddress)(Symbol);
@@ -140,9 +144,12 @@ typedef struct interface {
 	void (*export)(Symbol);
 	void (*function)(Symbol, Symbol[], Symbol[], int);
 	Node (*gen)     (Node);
-	void (*global)(Symbol);
+	void (*global)(Symbol); /* emits code to define a global variable. */
 	void (*import)(Symbol);
-	void (*local)(Symbol);
+	void (*local)(Symbol);  /* ch5: It announces temporaries likewise; these have the
+	                         * symbol's temporary flag set. local must initialize the
+                             * Xsymbol field, which holds data like the local's stack
+                             * offset or register number. */
 	void (*progbeg)(int argc, char *argv[]);
 	void (*progend)(void);
 	void (*segment)(int);
