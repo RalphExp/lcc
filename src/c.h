@@ -138,8 +138,12 @@ typedef struct interface {
 	void (*blockend)(Env *);
 	void (*defaddress)(Symbol);
 	void (*defconst)  (int suffix, int size, Value v);
+	                         /* ch5: defconst emits directives to define a cell and initialize
+                              * it to a constant value. v is the value, and ty encodes its
+                              * type and thus which element of the Value v to access. */
 	void (*defstring)(int n, char *s);
-	void (*defsymbol)(Symbol);
+	void (*defsymbol)(Symbol); /* ch5: to give the back end an opportunity to
+                                * initialize its Xsymbol field. */
 	void (*emit)    (Node);
 	void (*export)(Symbol);
 	void (*function)(Symbol, Symbol[], Symbol[], int);
@@ -152,8 +156,8 @@ typedef struct interface {
                              * offset or register number. */
 	void (*progbeg)(int argc, char *argv[]);
 	void (*progend)(void);
-	void (*segment)(int);
-	void (*space)(int);
+	void (*segment)(int);   /* ch5: announce a segment change. */
+	void (*space)(int);     /* ch5: emits code to allocate n zero bytes. */
 	void (*stabblock)(int, int, Symbol*);
 	void (*stabend)  (Coordinate *, Symbol, Coordinate **, Symbol *, Symbol *);
 	void (*stabfend) (Symbol, int);
