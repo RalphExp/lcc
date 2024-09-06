@@ -228,7 +228,7 @@ Symbol constant(Type ty, Value v) {
 			}
 		}
 	NEW0(p, PERM);
-	p->sym.name = vtoa(ty, v);
+	p->sym.name = vtoa(ty, v); // vtoa: value to string
 	p->sym.scope = CONSTANTS;
 	p->sym.type = ty;
 	p->sym.sclass = STATIC;
@@ -356,7 +356,8 @@ Symbol mksymbol(int sclass, const char *name, Type ty) {
 	return p;
 }
 
-/* vtoa - return string for the constant v of type ty */
+/* vtoa - value to string
+ * return string for the constant v of type ty */
 char *vtoa(Type ty, Value v) {
 	ty = unqual(ty);
 	switch (ty->op) {
