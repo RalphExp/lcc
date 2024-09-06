@@ -50,6 +50,7 @@ Table table(Table tp, int level) {
 	return new;
 }
 
+/* ch3: scan a table and apply a given function to all symbols at a given scope. */
 void foreach(Table tp, int lev, void (*apply)(Symbol, void *), void *cl) {
 	assert(tp);
 	while (tp && tp->level > lev)
@@ -57,11 +58,13 @@ void foreach(Table tp, int lev, void (*apply)(Symbol, void *), void *cl) {
 	if (tp && tp->level == lev) {
 		Symbol p;
 		Coordinate sav;
+		// save
 		sav = src;
 		for (p = tp->all; p && p->scope == lev; p = p->up) {
 			src = p->src;
 			(*apply)(p, cl);
 		}
+		// restore
 		src = sav;
 	}
 }
@@ -71,6 +74,8 @@ void enterscope(void) {
 		tempid = 0;
 }
 
+/* ch3: At scope exit, 1eve1 is decremented, and the corresponding identifiers
+ * and types tables are removed. */
 void exitscope(void) {
 	rmtypes(level);
 	if (types->level == level)
@@ -91,12 +96,15 @@ void exitscope(void) {
 	--level;
 }
 
+/* ch3: install allocates a symbol for name and adds it to a given table
+ * at a specific scope level, allocating a new table if necessary. It
+ * returns a symbol pointer. */
 Symbol install(const char *name, Table *tpp, int level, int arena) {
 	Table tp = *tpp;
 	struct entry *p;
 	unsigned h = (unsigned long)name&(HASHSIZE-1);
 
-	/* a zero value for leve1 indicates that name should be
+	/* a zero value for level indicates that name should be
 	 installed in *tpp. */
 	assert(level == 0 || level >= tp->level);
 	if (level > 0 && tp->level < level)
@@ -142,6 +150,9 @@ Symbol relocate(const char *name, Table src, Table dst) {
 	return &p->sym;
 }
 
+/* ch3: lookup searches a table for a name, it handles lookups where the
+ * search key is the name field of a symbol. It returns a symbol pointer
+ * if it succeeds and the null pointer otherwise. */
 Symbol lookup(const char *name, Table tp) {
 	struct entry *p;
 	unsigned h = (unsigned long)name&(HASHSIZE-1);

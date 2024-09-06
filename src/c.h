@@ -16,7 +16,9 @@
 
 #define istypename(t,tsym) (kind[t] == CHAR \
 	|| t == ID && tsym && tsym->sclass == TYPEDEF)
-#define sizeop(n) ((n)<<10)
+#define sizeop(n) ((n)<<10) /* ch5: is the generic version of the type-specific dag
+                             * operator op. That is, the expression generic(op)
+                             * returns op without its type suffix. */
 #define generic(op)  ((op)&0x3F0)
 #define specific(op) ((op)&0x3FF)
 #define opindex(op) (((op)>>4)&0x3F)
@@ -596,7 +598,7 @@ extern Symbol findlabel(int);
 extern Symbol findtype(Type);
 extern void foreach(Table, int, void (*)(Symbol, void *), void *);
 extern Symbol genident(int, Type, int);
-extern int genlabel(int);
+extern int genlabel(int); // ch5: increments the generated-identifier counter by n and returns its old value.
 extern Symbol install(const char *, Table *, int, int);
 extern Symbol intconst(int);
 extern Symbol lookup(const char *, Table);
