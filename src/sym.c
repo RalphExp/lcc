@@ -173,6 +173,9 @@ int genlabel(int n) {
 	return label - n;
 }
 
+/* ch3: findlabel takes a label number and returns the corresponding
+ * label symbol, installing and initializing it, and announcing it to
+ * the back end, if necessary.*/
 Symbol findlabel(int lab) {
 	struct entry *p;
 	unsigned h = lab&(HASHSIZE-1);
@@ -193,6 +196,9 @@ Symbol findlabel(int lab) {
 	return &p->sym;
 }
 
+/* ch3: constant searches the constant table for a given value of a given type,
+ * installing it if necessary, and returns the symbol pointer. Constants
+ * are never removed from the table.*/
 Symbol constant(Type ty, Value v) {
 	struct entry *p;
 	unsigned h = v.u&(HASHSIZE-1);
@@ -209,7 +215,7 @@ Symbol constant(Type ty, Value v) {
 					float z1 = v.d, z2 = p->sym.u.c.v.d;
 					char *b1 = (char *)&z1, *b2 = (char *)&z2;
 					if (z1 == z2
-					&& (!little.endian && b1[0] == b2[0]
+					&& (!little.endian && b1[0] == b2[0] // XXX: ???
 					||   little.endian && b1[sizeof (z1)-1] == b2[sizeof (z2)-1]))
 						return &p->sym;
 				} else if (equalp(d))
@@ -244,6 +250,12 @@ Symbol intconst(int n) {
 	return constant(inttype, v);
 }
 
+/* ch3: The front end generates local variables for many purposes. For example,
+ * it generates static variables to hold out-of-line constants like strings and
+ * jump tables for switch statements. It generates locals to pass and return
+ * structures to functions and to hold the results of conditional expressions
+ * and switch values. genident allocates and initializes a generated identifier
+ * of a specific type, storage class, and scope. */
 Symbol genident(int scls, Type ty, int lev) {
 	Symbol p;
 
@@ -271,6 +283,8 @@ Symbol temporary(int scls, Type ty) {
 	return p;
 }
 
+/* ch3: Temporaries are another kind of generated variable, and are
+ * distinguished by a lit temporary flag. */
 Symbol newtemp(int sclass, int tc, int size) {
 	Symbol p = temporary(sclass, btot(tc, size));
 
