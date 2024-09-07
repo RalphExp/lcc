@@ -36,8 +36,16 @@ Type unsignedptr;		/* unsigned type to hold void* */
 Type signedptr;			/* signed type to hold void* */
 Type widechar;			/* unsigned type that represents wchar_t */
 
+/* op: INT, FLOAT, UNSIGNED
+ * name: "char", "int", "float", "double", ... etc. */
+
+/* XXX: typetable is for a specific type, int, char, ... etc,
+ * but Table types(defines in sym.c) is for keeping track of
+ * type declared in functions. */
 static Type xxinit(int op, char *name, Metrics m) {
 	Symbol p = install(string(name), &types, GLOBAL, PERM);
+
+	// search typetable, if type not found, a new type will be created.
 	Type ty = type(op, 0, m.size, m.align, p);
 
 	assert(ty->align == 0 || ty->size%ty->align == 0);
@@ -72,10 +80,10 @@ static Type type(int op, Type ty, int size, int align, void *sym) {
 &(NELEMS(typetable)-1);
 	struct entry *tn;
 
-	/* type always builds new types for function types and for incomplete
+	/* ch4: type always builds new types for function types and for incomplete
 	 * array types. When type builds a new type, it initializes the fields
 	 * specified by the arguments, clears the x field, adds the type to the
-	 *  appropriate hash chain, and returns the new Type. */
+	 * appropriate hash chain, and returns the new Type. */
 	if (op != FUNCTION && (op != ARRAY || size > 0))
 		for (tn = typetable[h]; tn; tn = tn->link)
 			if (tn->type.op    == op   && tn->type.type  == ty

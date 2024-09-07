@@ -320,7 +320,7 @@ struct symbol {
 		Symbol *idlist;     /* for enum */
 		struct {
 			Value min, max;
-		} limits;
+		} limits;           /* ch4: value limit of a type, INT, UNSIGNED, FLOAT. */
 		struct {            /* ch5: Constants have a scope equal to CONSTANTS, and an
                              * sclass equal to STATIC, The actual value of the
                              * constant is stored in the u.c.v field, which is defined on
@@ -372,7 +372,7 @@ enum {
 	FIELD=43<<4
 };
 struct type {
-	int op; 	// The op field holds an integer operator code
+	int op; 	// The op field holds an integer operator code(FLOAT, INT, UNSIGNED)
 	Type type;  // and the type field holds the operand.
 	            // if this is a function then type is the return
 				// value's type and f. proto points to a null-terminated

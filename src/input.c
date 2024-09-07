@@ -5,7 +5,11 @@ static char rcsid[] = "$Id$";
 static void pragma(void);
 static void resynch(void);
 
-static int bsize;
+static int bsize; /* ch6: If bsize is less than zero, no input has been read
+                   * or a read error has occurred; if bsize is zero, the end
+                   * of input has been reached; and bsi ze is greater than zero
+                   * when bsi ze characters have just been read. */
+
 static unsigned char buffer[MAXLINE+1 + BUFSIZE+1];
 unsigned char *cp;	/* current input character */
 char *file;		/* current input file name */
@@ -33,6 +37,7 @@ void nextline(void) {
 		}
 	} while (*cp == '\n' && cp == limit);
 }
+
 void fillbuf(void) {
 	if (bsize == 0)
 		return;
@@ -59,6 +64,7 @@ void fillbuf(void) {
 	limit = &buffer[MAXLINE+1+bsize];
 	*limit = '\n';
 }
+
 void input_init(int argc, char *argv[]) {
 	static int inited;
 
