@@ -43,16 +43,18 @@ void fillbuf(void) {
 		return;
 	if (cp >= limit)
 		cp = &buffer[MAXLINE+1];
-	else
-		{
-			int n = limit - cp;
-			unsigned char *s = &buffer[MAXLINE+1] - n;
-			assert(s >= buffer);
-			line = (char *)s - ((char *)cp - line);
-			while (cp < limit)
-				*s++ = *cp++;
-			cp = &buffer[MAXLINE+1] - n;
-		}
+	else {
+        /* ch6: Otherwise, the tail limit-cp characters are moved so that
+         * the last character is in buffer[MAXLINE], and is thus adjacent
+         * to the newly read characters. */
+		int n = limit - cp;
+		unsigned char *s = &buffer[MAXLINE+1] - n;
+		assert(s >= buffer);
+		line = (char *)s - ((char *)cp - line);
+		while (cp < limit)
+			*s++ = *cp++;
+		cp = &buffer[MAXLINE+1] - n;
+	}
 	if (feof(stdin))
 		bsize = 0;
 	else
