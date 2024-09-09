@@ -224,7 +224,7 @@ Type deref(Type ty) {
 	return isenum(ty) ? unqual(ty)->type : ty;
 }
 
-/* create T[n] with alignment a */
+/* ch4: create T[n] with alignment a */
 Type array(Type ty, int n, int a) {
 	assert(ty);
 	if (isfunc(ty)) {
