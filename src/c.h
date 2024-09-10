@@ -19,12 +19,12 @@
 #define sizeop(n) ((n)<<10) /* ch5: is the generic version of the type-specific dag
                              * operator op. That is, the expression generic(op)
                              * returns op without its type suffix. */
-#define generic(op)  ((op)&0x3F0)
+#define generic(op)  ((op)&0x3F0) /* operation category */
 #define specific(op) ((op)&0x3FF)
 #define opindex(op) (((op)>>4)&0x3F)
 #define opkind(op)  ((op)&~0x3F0)
 #define opsize(op)  ((op)>>10)
-#define optype(op)  ((op)&0xF)
+#define optype(op)  ((op)&0xF) /* type index */
 #ifdef __LCC__
 #ifndef __STDC__
 #define __STDC__
@@ -352,14 +352,15 @@ struct symbol {
 };
 enum { CONSTANTS=1, LABELS, GLOBAL, PARAM, LOCAL };
 struct tree {
-	int op;
-	Type type;
-	Tree kids[2];
-	Node node;
-	union {
+	int op;       /* ch8: holds a code for the operator. */
+	Type type;    /* ch8: points to a Type for the type of the result
+                   * computed by the node at runtime. */
+	Tree kids[2]; /* ch8: point to the operands. */
+	Node node;    /* ch8: node field is used to build dags from trees, see(12.2) */
+	union {       /* ch8: Trees for some operators have additional
+                   * information tucked away in the fields of their u unions. */
 		Value v;
 		Symbol sym;
-
 		Field field;
 	} u;
 };

@@ -23,6 +23,9 @@ Tree tree(int op, Type type, Tree left, Tree right) {
 	return p;
 }
 
+/* ch8: In some cases, however, an expression's tree must be saved beyond
+ * the compilation of the current statement. These expressions are parsed
+ * by calling texpr with an argument that specifies the allocation arena. */
 Tree texpr(Tree (*f)(int), int tok, int a) {
 	int save = where;
 	Tree p;
@@ -32,6 +35,7 @@ Tree texpr(Tree (*f)(int), int tok, int a) {
 	where = save;
 	return p;
 }
+
 static Tree root1(Tree p) {
 	if (p == NULL)
 		return p;

@@ -36,6 +36,8 @@ static Type super(Type ty) {
 	}
 	return ty;
 }
+
+/* ch8: parsing comma expression. */
 Tree expr(int tok) {
 	static char stop[] = { IF, ID, '}', 0 };
 	Tree p = expr1(0);
@@ -50,33 +52,43 @@ Tree expr(int tok) {
 		test(tok, stop);
 	return p;
 }
+
 Tree expr0(int tok) {
 	return root(expr(tok));
 }
+
+/* ch8: parsing =, +=, -=, *=,  /=, ^=, &=, |=, <<=, >>=
+ * which are right associative. */
 Tree expr1(int tok) {
 	static char stop[] = { IF, ID, 0 };
+
+	// recursive parsing higher priority expression
 	Tree p = expr2();
 
 	if (t == '='
-	|| (prec[t] >=  6 && prec[t] <=  8)
-	|| (prec[t] >= 11 && prec[t] <= 13)) {
+	|| (prec[t] >=  6 && prec[t] <=  8) // &=, |=, ^=
+	|| (prec[t] >= 11 && prec[t] <= 13)) { // +=, -=, *=, /=, %=, <<=, >>=
 		int op = t;
 		t = gettok();
 		if (oper[op] == ASGN)
+            // XXX: notice the right recursion here for right associative
 			p = asgntree(ASGN, p, value(expr1(0)));
-		else
-			{
-				expect('=');
-				p = incr(op, p, expr1(0));
-			}
+		else {
+			expect('=');
+            // XXX: notice the right recursion here for right associative
+			p = incr(op, p, expr1(0));
+		}
 	}
 	if (tok)	
 		test(tok, stop);
 	return p;
 }
+
 Tree incr(int op, Tree v, Tree e) {
 	return asgntree(ASGN, v, (*optree[op])(oper[op], v, e));
 }
+
+/* ch8: parsing condition expression (?:) */
 static Tree expr2(void) {
 	Tree p = expr3(4);
 
@@ -92,11 +104,10 @@ static Tree expr2(void) {
 		l = pointer(expr(':'));
 		pts[1] = src;
 		r = pointer(expr2());
-		if (generic(p->op) != CNST && events.points)
-			{
-				apply(events.points, &pts[0], &l);
-				apply(events.points, &pts[1], &r);
-			}
+		if (generic(p->op) != CNST && events.points) {
+			apply(events.points, &pts[0], &l);
+			apply(events.points, &pts[1], &r);
+		}
 		p = condtree(p, l, r);
 	}
 	return p;
@@ -133,6 +144,7 @@ static Tree expr3(int k) {
 		}
 	return p;
 }
+
 static Tree unary(void) {
 	Tree p;
 
@@ -461,6 +473,8 @@ Tree lvalue(Tree p) {
 		warning("`%t' used as an lvalue\n", p->type);
 	return p->kids[0];
 }
+
+/* ch8: returns p if p->type == ty or a copy of p with type ty.*/
 Tree retype(Tree p, Type ty) {
 	Tree q;
 
@@ -471,6 +485,8 @@ Tree retype(Tree p, Type ty) {
 	q->u = p->u;
 	return q;
 }
+
+/* ch8: returns the rightmost non-RIGHT operand of a nested series of RIGHT trees.*/
 Tree rightkid(Tree p) {
 	while (p && p->op == RIGHT)
 		if (p->kids[1])
@@ -482,6 +498,8 @@ Tree rightkid(Tree p) {
 	assert(p);
 	return p;
 }
+
+/* ch8: is one if p contains a CALL tree and zero otherwise. */
 int hascall(Tree p) {
 	if (p == 0)
 		return 0;
@@ -510,6 +528,7 @@ Type binary(Type xty, Type yty) {
 	return inttype;
 #undef xx
 }
+
 Tree pointer(Tree p) {
 	if (isarray(p->type))
 		/* assert(p->op != RIGHT || p->u.sym == NULL), */
@@ -518,6 +537,7 @@ Tree pointer(Tree p) {
 		p = retype(p, ptr(p->type));
 	return p;
 }
+
 Tree cond(Tree p) {
 	int op = generic(rightkid(p)->op);
 

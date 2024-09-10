@@ -22,6 +22,10 @@ void test(int tok, char set[]) {
 			t = gettok();
 	}
 }
+
+/* ch7: If the expected token is missing, expect issues a diagnostic
+ * and returns without advancing the input, as if the expected token had
+ * been present. */
 void expect(int tok) {
 	if (t == tok)
 		t = gettok();
@@ -31,6 +35,7 @@ void expect(int tok) {
 		fprint(stderr, " expecting `%k'\n", tok);
 	}
 }
+
 void error(const char *fmt, ...) {
 	va_list ap;
 
