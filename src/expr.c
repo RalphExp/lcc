@@ -37,7 +37,9 @@ static Type super(Type ty) {
 	return ty;
 }
 
-/* ch8: parsing comma expression. */
+/* ch8: parsing comma expression. expr's argument, if nonzero,
+ * is the code for the token that should follow this occurrence
+ * of an expression.*/
 Tree expr(int tok) {
 	static char stop[] = { IF, ID, '}', 0 };
 	Tree p = expr1(0);
@@ -54,6 +56,8 @@ Tree expr(int tok) {
 }
 
 Tree expr0(int tok) {
+	/* Statement-level expressions, such as assignments and function calls,
+     * are executed for their side effects. */
 	return root(expr(tok));
 }
 
@@ -65,6 +69,12 @@ Tree expr1(int tok) {
 	// recursive parsing higher priority expression
 	Tree p = expr2();
 
+    /* ch8: this code appears to treat them as two tokens; expr3,
+	 * avoids this erroneous interpretation by recognizing tokens
+	 * like + as binary operators only when they aren't immediately
+	 * followed by an equals sign. Thus, exprl correctly interprets
+	 * a += bas an augmented assignment and lets expr3 discover
+	 * the error in a + = b.*/
 	if (t == '='
 	|| (prec[t] >=  6 && prec[t] <=  8) // &=, |=, ^=
 	|| (prec[t] >= 11 && prec[t] <= 13)) { // +=, -=, *=, /=, %=, <<=, >>=
@@ -76,6 +86,8 @@ Tree expr1(int tok) {
 		else {
 			expect('=');
             // XXX: notice the right recursion here for right associative
+			/* ch8: incr is one place where the front end builds a dag
+			 * instead of a tree. */
 			p = incr(op, p, expr1(0));
 		}
 	}
@@ -90,7 +102,7 @@ Tree incr(int op, Tree v, Tree e) {
 
 /* ch8: parsing condition expression (?:) */
 static Tree expr2(void) {
-	Tree p = expr3(4);
+	Tree p = expr3(4); /* ch8:set the precedence starts from 4 */
 
 	if (t == '?') {
 		Tree l, r;
@@ -101,9 +113,14 @@ static Tree expr2(void) {
 		p = pointer(p);
 		t = gettok();
 		pts[0] = src;
+		// expect ':' after parsing expression
 		l = pointer(expr(':'));
 		pts[1] = src;
+
+		// handles right associative
 		r = pointer(expr2());
+
+		// event hook
 		if (generic(p->op) != CNST && events.points) {
 			apply(events.points, &pts[0], &l);
 			apply(events.points, &pts[1], &r);
@@ -112,6 +129,7 @@ static Tree expr2(void) {
 	}
 	return p;
 }
+
 Tree value(Tree p) {
 	int op = generic(rightkid(p)->op);
 
@@ -122,10 +140,13 @@ Tree value(Tree p) {
 			consttree(0, inttype));
 	return p;
 }
+
+/* parsing the most common expression, +, -, *, /, ... etc. */
 static Tree expr3(int k) {
 	int k1;
 	Tree p = unary();
 
+    // t is current token
 	for (k1 = prec[t]; k1 >= k; k1--)
 		while (prec[t] == k1 && *cp != '=') {
 			Tree r;
@@ -135,6 +156,8 @@ static Tree expr3(int k) {
 			pt = src;
 			p = pointer(p);
 			if (op == ANDAND || op == OROR) {
+                /* ch8: a trick to make && and || right associative,
+                 * for short circuit evaluation */
 				r = pointer(expr3(k1));
 				if (events.points)
 					apply(events.points, &pt, &r);
@@ -149,81 +172,102 @@ static Tree unary(void) {
 	Tree p;
 
 	switch (t) {
-	case '*':    t = gettok(); p = unary(); p = pointer(p);
-						  if (isptr(p->type)
-						  && (isfunc(p->type->type) || isarray(p->type->type)))
-						  	p = retype(p, p->type->type);
-						  else {
-						  	if (YYnull)
-						  		p = nullcheck(p);
-						  	p = rvalue(p);
-						  } break;
-	case '&':    t = gettok(); p = unary(); if (isarray(p->type) || isfunc(p->type))
-						  	p = retype(p, ptr(p->type));
-						  else
-						  	p = lvalue(p);
-						  if (isaddrop(p->op) && p->u.sym->sclass == REGISTER)
-						  	error("invalid operand of unary &; `%s' is declared register\n", p->u.sym->name);
-
-						  else if (isaddrop(p->op))
-						  	p->u.sym->addressed = 1;
- break;
-	case '+':    t = gettok(); p = unary(); p = pointer(p);
-						  if (isarith(p->type))
-						  	p = cast(p, promote(p->type));
-						  else
-						  	typeerror(ADD, p, NULL);  break;
-	case '-':    t = gettok(); p = unary(); p = pointer(p);
-						  if (isarith(p->type)) {
-						  	Type ty = promote(p->type);
-						  	p = cast(p, ty);
-						  	if (isunsigned(ty)) {
-						  		warning("unsigned operand of unary -\n");
-						  		p = simplify(ADD, ty, simplify(BCOM, ty, p, NULL), cnsttree(ty, 1UL));
-						  	} else
-						  		p = simplify(NEG, ty, p, NULL);
-						  } else
-						  	typeerror(SUB, p, NULL); break;
-	case '~':    t = gettok(); p = unary(); p = pointer(p);
-						  if (isint(p->type)) {
-						  	Type ty = promote(p->type);
-						  	p = simplify(BCOM, ty, cast(p, ty), NULL);
-						  } else
-						  	typeerror(BCOM, p, NULL);  break;
-	case '!':    t = gettok(); p = unary(); p = pointer(p);
-						  if (isscalar(p->type))
-						  	p = simplify(NOT, inttype, cond(p), NULL);
-						  else
-						  	typeerror(NOT, p, NULL); break;
-	case INCR:   t = gettok(); p = unary(); p = incr(INCR, pointer(p), consttree(1, inttype)); break;
-	case DECR:   t = gettok(); p = unary(); p = incr(DECR, pointer(p), consttree(1, inttype)); break;
-	case TYPECODE: case SIZEOF: { int op = t;
-				      Type ty;
-				      p = NULL;
-				      t = gettok();
-				      if (t == '(') {
-				      	t = gettok();
-				      	if (istypename(t, tsym)) {
-				      		ty = typename();
-				      		expect(')');
-				      	} else {
-				      		p = postfix(expr(')'));
-				      		ty = p->type;
-				      	}
-				      } else {
-				      	p = unary();
-				      	ty = p->type;
-				      }
-				      assert(ty);
-				      if (op == TYPECODE)
-				      	p = cnsttree(inttype, (long)ty->op);
-				      else {
-				      	if (isfunc(ty) || ty->size == 0)
-				      		error("invalid type argument `%t' to `sizeof'\n", ty);
-				      	else if (p && rightkid(p)->op == FIELD)
-				      		error("`sizeof' applied to a bit field\n");
-				      	p = cnsttree(unsignedlong, (unsigned long)ty->size);
-				      } } break;
+	case '*':
+        // pointer only check for function/array
+		t = gettok(); p = unary(); p = pointer(p);
+		if (isptr(p->type) && (isfunc(p->type->type) || isarray(p->type->type)))
+			p = retype(p, p->type->type);
+		else {
+			if (YYnull)
+				p = nullcheck(p);
+			p = rvalue(p);
+		}
+		break;
+	case '&':
+		t = gettok(); p = unary();
+		if (isarray(p->type) || isfunc(p->type))
+			p = retype(p, ptr(p->type));
+		else
+			p = lvalue(p);
+		if (isaddrop(p->op) && p->u.sym->sclass == REGISTER)
+			error("invalid operand of unary &; `%s' is declared register\n", p->u.sym->name);
+		else if (isaddrop(p->op))
+			p->u.sym->addressed = 1;
+		break;
+	case '+':
+		t = gettok(); p = unary(); p = pointer(p);
+		if (isarith(p->type))
+			p = cast(p, promote(p->type));
+		else
+			typeerror(ADD, p, NULL);
+		break;
+	case '-':
+		t = gettok(); p = unary(); p = pointer(p);
+		if (isarith(p->type)) {
+			Type ty = promote(p->type);
+			p = cast(p, ty);
+			if (isunsigned(ty)) {
+				warning("unsigned operand of unary -\n");
+				p = simplify(ADD, ty, simplify(BCOM, ty, p, NULL), cnsttree(ty, 1UL));
+			} else
+				p = simplify(NEG, ty, p, NULL);
+		} else
+			typeerror(SUB, p, NULL);
+		break;
+	case '~':
+		t = gettok(); p = unary(); p = pointer(p);
+		if (isint(p->type)) {
+			Type ty = promote(p->type);
+			p = simplify(BCOM, ty, cast(p, ty), NULL);
+		} else
+			typeerror(BCOM, p, NULL);
+		break;
+	case '!':
+		t = gettok(); p = unary(); p = pointer(p);
+		if (isscalar(p->type))
+			p = simplify(NOT, inttype, cond(p), NULL);
+		else
+			typeerror(NOT, p, NULL);
+		break;
+	case INCR:
+		t = gettok(); p = unary();
+		p = incr(INCR, pointer(p), consttree(1, inttype));
+		break;
+	case DECR:
+		t = gettok(); p = unary();
+		p = incr(DECR, pointer(p), consttree(1, inttype));
+		break;
+	case TYPECODE:
+	case SIZEOF: {
+			int op = t;
+			Type ty;
+			p = NULL;
+			t = gettok();
+			if (t == '(') {
+				t = gettok();
+				if (istypename(t, tsym)) {
+					ty = typename();
+					expect(')');
+				} else {
+					p = postfix(expr(')'));
+					ty = p->type;
+				}
+			} else {
+				p = unary();
+				ty = p->type;
+			}
+			assert(ty);
+			if (op == TYPECODE)
+				p = cnsttree(inttype, (long)ty->op);
+			else {
+				if (isfunc(ty) || ty->size == 0)
+					error("invalid type argument `%t' to `sizeof'\n", ty);
+				else if (p && rightkid(p)->op == FIELD)
+					error("`sizeof' applied to a bit field\n");
+				p = cnsttree(unsignedlong, (unsigned long)ty->size);
+			}
+		}
+		break;
 	case '(':
 		t = gettok();
 		if (istypename(t, tsym)) {
@@ -465,6 +509,7 @@ Tree rvalue(Tree p) {
 	ty = unqual(ty);
 	return tree(mkop(INDIR,ty), ty, p, NULL);
 }
+
 Tree lvalue(Tree p) {
 	if (generic(p->op) != INDIR) {
 		error("lvalue required\n");
@@ -652,6 +697,7 @@ Tree cast(Tree p, Type type) {
 	}
 	return retype(p, type);
 }
+
 Tree field(Tree p, const char *name) {
 	Field q;
 	Type ty1, ty = p->type;
@@ -693,12 +739,14 @@ Tree field(Tree p, const char *name) {
 	}
 	return p;
 }
+
 /* funcname - return name of function f or a function' */
 char *funcname(Tree f) {
 	if (isaddrop(f->op))
 		return stringf("`%s'", f->u.sym->name);
 	return "a function";
 }
+
 static Tree nullcheck(Tree p) {
 	if (!needconst && YYnull && isptr(p->type)) {
 		p = value(p);
@@ -717,6 +765,7 @@ static Tree nullcheck(Tree p) {
 	}
 	return p;
 }
+
 Tree nullcall(Type pty, Symbol f, Tree p, Tree e) {
 	Type ty;
 

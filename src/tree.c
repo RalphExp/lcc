@@ -36,6 +36,7 @@ Tree texpr(Tree (*f)(int), int tok, int a) {
 	return p;
 }
 
+/* ch8: called with trees that will be executed only for their side effect. */
 static Tree root1(Tree p) {
 	if (p == NULL)
 		return p;
