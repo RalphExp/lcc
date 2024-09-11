@@ -229,11 +229,11 @@ static Tree unary(void) {
 		else
 			typeerror(NOT, p, NULL);
 		break;
-	case INCR:
+	case INCR: // preincrement ++
 		t = gettok(); p = unary();
 		p = incr(INCR, pointer(p), consttree(1, inttype));
 		break;
-	case DECR:
+	case DECR: // predecrement --
 		t = gettok(); p = unary();
 		p = incr(DECR, pointer(p), consttree(1, inttype));
 		break;
@@ -259,7 +259,8 @@ static Tree unary(void) {
 			assert(ty);
 			if (op == TYPECODE)
 				p = cnsttree(inttype, (long)ty->op);
-			else {
+			else { /* ch8: sizeof cannot be applied to functions, incomplete
+                    * types, or those derived from bit fields. */
 				if (isfunc(ty) || ty->size == 0)
 					error("invalid type argument `%t' to `sizeof'\n", ty);
 				else if (p && rightkid(p)->op == FIELD)
@@ -319,141 +320,152 @@ static Tree unary(void) {
 static Tree postfix(Tree p) {
 	for (;;)
 		switch (t) {
-		case INCR:  p = tree(RIGHT, p->type,
-			    	tree(RIGHT, p->type,
-			    		p,
-			    		incr(t, p, consttree(1, inttype))),
-			    	p);
-			    t = gettok(); break;
-		case DECR:  p = tree(RIGHT, p->type,
-			    	tree(RIGHT, p->type,
-			    		p,
-			    		incr(t, p, consttree(1, inttype))),
-			    	p);
-			    t = gettok(); break;
-		case '[':   {
-			    	Tree q;
-			    	t = gettok();
-			    	q = expr(']');
-			    	if (YYnull)
-			    		if (isptr(p->type))
-			    			p = nullcheck(p);
-			    		else if (isptr(q->type))
-			    			q = nullcheck(q);
-			    	p = (*optree['+'])(ADD, pointer(p), pointer(q));
-			    	if (isptr(p->type) && isarray(p->type->type))
-			    		p = retype(p, p->type->type);
-			    	else
-			    		p = rvalue(p);
-			    } break;
-		case '(':   {
-			    	Type ty;
-			    	Coordinate pt;
-			    	p = pointer(p);
-			    	if (isptr(p->type) && isfunc(p->type->type))
-			    		ty = p->type->type;
-			    	else {
-			    		error("found `%t' expected a function\n", p->type);
-			    		ty = func(voidtype, NULL, 1);
-			    		p = retype(p, ptr(ty));
-			    	}
-			    	pt = src;
-			    	t = gettok();
-			    	p = call(p, ty, pt);
-			    } break;
-		case '.':   t = gettok();
-			    if (t == ID) {
-			    	if (isstruct(p->type)) {
-			    		Tree q = addrof(p);
-			    		p = field(q, token);
-			    		q = rightkid(q);
-			    		if (isaddrop(q->op) && q->u.sym->temporary)
-			    			p = tree(RIGHT, p->type, p, NULL);
-			    	} else
-			    		error("left operand of . has incompatible type `%t'\n",
-			    			p->type);
-			    	t = gettok();
-			    } else
-			    	error("field name expected\n"); break;
-		case DEREF: t = gettok();
-			    p = pointer(p);
-			    if (t == ID) {
-			    	if (isptr(p->type) && isstruct(p->type->type)) {
-			    		if (YYnull)
-			    			p = nullcheck(p);
-			    		p = field(p, token);
-			    	} else
-			    		error("left operand of -> has incompatible type `%t'\n", p->type);
+		case INCR: // post increment XXX: why two RIGHT?
+			p = tree(RIGHT, p->type,
+					tree(RIGHT, p->type, p, incr(t, p, consttree(1, inttype))),
+				p);
+			t = gettok();
+			break;
+		case DECR: // post decrement
+			p = tree(RIGHT, p->type,
+					tree(RIGHT, p->type, p, incr(t, p, consttree(1, inttype))),
+			    p);
+			t = gettok();
+			break;
+		case '[': {
+				Tree q;
+				t = gettok();
+				q = expr(']');
+				if (YYnull)
+					if (isptr(p->type))
+						p = nullcheck(p);
+					else if (isptr(q->type))
+						q = nullcheck(q);
+				p = (*optree['+'])(ADD, pointer(p), pointer(q));
+				if (isptr(p->type) && isarray(p->type->type))
+					p = retype(p, p->type->type);
+				else
+					p = rvalue(p);
+			}
+			break;
+		case '(': {
+				Type ty;
+				Coordinate pt;
+				p = pointer(p);
+				if (isptr(p->type) && isfunc(p->type->type))
+					ty = p->type->type;
+				else {
+					error("found `%t' expected a function\n", p->type);
+					ty = func(voidtype, NULL, 1);
+					p = retype(p, ptr(ty));
+				}
+				pt = src;
+				t = gettok();
+				p = call(p, ty, pt);
+			}
+			break;
+		case '.':
+			t = gettok();
+			if (t == ID) {
+				if (isstruct(p->type)) {
+					Tree q = addrof(p);
+					p = field(q, token);
+					q = rightkid(q);
+					if (isaddrop(q->op) && q->u.sym->temporary)
+						p = tree(RIGHT, p->type, p, NULL);
+				} else
+					error("left operand of . has incompatible type `%t'\n",
+						p->type);
+				t = gettok();
+			} else
+				error("field name expected\n");
+			break;
+		case DEREF:
+			t = gettok();
+			p = pointer(p);
+			if (t == ID) {
+				if (isptr(p->type) && isstruct(p->type->type)) {
+					if (YYnull)
+						p = nullcheck(p);
+					p = field(p, token);
+				} else
+					error("left operand of -> has incompatible type `%t'\n", p->type);
 
-			    	t = gettok();
-			    } else
-			    	error("field name expected\n"); break;
+				t = gettok();
+			} else
+				error("field name expected\n");
+			break;
 		default:
 			return p;
 		}
 }
+
 static Tree primary(void) {
 	Tree p;
 
 	assert(t != '(');
 	switch (t) {
 	case ICON:
-	case FCON: p = tree(mkop(CNST,tsym->type), tsym->type, NULL, NULL);
-		   p->u.v = tsym->u.c.v;
- break;
-	case SCON: if (ischar(tsym->type->type))
+	case FCON:
+		p = tree(mkop(CNST,tsym->type), tsym->type, NULL, NULL);
+		p->u.v = tsym->u.c.v;
+ 		break;
+	case SCON:
+		if (ischar(tsym->type->type))
 		   	tsym->u.c.v.p = stringn(tsym->u.c.v.p, tsym->type->size);
-		   else
+		else
 		   	tsym->u.c.v.p = memcpy(allocate((tsym->type->size/widechar->size)*sizeof (int), PERM),
 		   		tsym->u.c.v.p, (tsym->type->size/widechar->size)*sizeof (int));
-		   tsym = constant(tsym->type, tsym->u.c.v); 
-		   if (tsym->u.c.loc == NULL)
+		tsym = constant(tsym->type, tsym->u.c.v);
+		if (tsym->u.c.loc == NULL)
 		   	tsym->u.c.loc = genident(STATIC, tsym->type, GLOBAL);
-		   p = idtree(tsym->u.c.loc); break;
-	case ID:   if (tsym == NULL)
-		   	{
-				Symbol p = install(token, &identifiers, level, PERM);
-				p->src = src;
-				if (getchr() == '(') {
-					Symbol q = lookup(token, externals);
-					p->type = func(inttype, NULL, 1);
-					p->sclass = EXTERN;
-					if (Aflag >= 1)
-						warning("missing prototype\n");
-					if (q && !eqtype(q->type, p->type, 1))
-						warning("implicit declaration of `%s' does not match previous declaration at %w\n", q->name, &q->src);
+		p = idtree(tsym->u.c.loc);
+		break;
+	case ID:
+		if (tsym == NULL) {
+			Symbol p = install(token, &identifiers, level, PERM);
+			p->src = src;
+			if (getchr() == '(') {
+				Symbol q = lookup(token, externals);
+				p->type = func(inttype, NULL, 1);
+				p->sclass = EXTERN;
+				if (Aflag >= 1)
+					warning("missing prototype\n");
+				if (q && !eqtype(q->type, p->type, 1))
+					warning("implicit declaration of `%s' does not match previous declaration at %w\n", q->name, &q->src);
 
-					if (q == NULL) {
-						q = install(p->name, &externals, GLOBAL, PERM);
-						q->type = p->type;
-						q->sclass = EXTERN;
-						q->src = src;
-						(*IR->defsymbol)(q);
-					}
-					p->u.alias = q;
-				} else {
-					error("undeclared identifier `%s'\n", p->name);
-					p->sclass = AUTO;
-					p->type = inttype;
-					if (p->scope == GLOBAL)
-						(*IR->defsymbol)(p);
-					else
-						addlocal(p);
+				if (q == NULL) {
+					q = install(p->name, &externals, GLOBAL, PERM);
+					q->type = p->type;
+					q->sclass = EXTERN;
+					q->src = src;
+					(*IR->defsymbol)(q);
 				}
-				t = gettok();
-				if (xref)
-					use(p, src);
-				return idtree(p);
+				p->u.alias = q;
+			} else {
+				error("undeclared identifier `%s'\n", p->name);
+				p->sclass = AUTO;
+				p->type = inttype;
+				if (p->scope == GLOBAL)
+					(*IR->defsymbol)(p);
+				else
+					addlocal(p);
 			}
-		   if (xref)
+			t = gettok();
+			if (xref)
+				use(p, src);
+			return idtree(p);
+		}
+		if (xref)
 		   	use(tsym, src);
-		   if (tsym->sclass == ENUM)
+		if (tsym->sclass == ENUM)
 		   	p = consttree(tsym->u.value, inttype);
-		   else {
+		else {
 		   	if (tsym->sclass == TYPEDEF)
 		   		error("illegal use of type name `%s'\n", tsym->name);
 		   	p = idtree(tsym);
-		   } break;
+		}
+		break;
 	case FIRSTARG:
 		if (level > PARAM && cfunc && cfunc->u.f.callee[0])
 			p = idtree(cfunc->u.f.callee[0]);
@@ -469,6 +481,7 @@ static Tree primary(void) {
 	t = gettok();
 	return p;
 }
+
 Tree idtree(Symbol p) {
 	int op;
 	Tree e;
