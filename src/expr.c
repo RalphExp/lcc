@@ -412,12 +412,17 @@ static Tree primary(void) {
  		break;
 	case SCON:
 		if (ischar(tsym->type->type))
+			// tsym->type is array
+			// copy the string from lexer's buffer to tsym
 		   	tsym->u.c.v.p = stringn(tsym->u.c.v.p, tsym->type->size);
-		else
+		else // now tsym->u.c.v.p is pointing to the lexer's buffer
+			// allocate and memcpy work together to copy the buffer's content
+			// to the pool, and reset the tsym->u.c.v.p pointer
 		   	tsym->u.c.v.p = memcpy(allocate((tsym->type->size/widechar->size)*sizeof (int), PERM),
 		   		tsym->u.c.v.p, (tsym->type->size/widechar->size)*sizeof (int));
 		tsym = constant(tsym->type, tsym->u.c.v);
 		if (tsym->u.c.loc == NULL)
+			// generate a label for this constant
 		   	tsym->u.c.loc = genident(STATIC, tsym->type, GLOBAL);
 		p = idtree(tsym->u.c.loc);
 		break;
@@ -482,21 +487,28 @@ static Tree primary(void) {
 	return p;
 }
 
+/* ch8: idtree builds a tree for accessing the identifier indicated by the
+ * symbol-table entry p. It uses an identifier's scope and storage class to
+ * determine its addressing operator, then uses its type to determine the
+ * shape of the tree that accesses it, and stores a pointer to the symbol-table
+ * entry in the tree's u.sym field. */
 Tree idtree(Symbol p) {
 	int op;
 	Tree e;
 	Type ty = p->type ? unqual(p->type) : voidptype;
 
+    /* ch8: All external, static, and global identifiers are addressed
+     * with ADDRG operators; parameters are addressed with ADDRF; and
+     * locals are addressed with ADDRL. */
 	if (p->scope == GLOBAL || p->sclass == STATIC)
 		op = ADDRG;
 	else if (p->scope == PARAM) {
 		op = ADDRF;
-		if (isstruct(p->type) && !IR->wants_argb)
-			{
-				e = tree(mkop(op,voidptype), ptr(ptr(p->type)), NULL, NULL);
-				e->u.sym = p;
-				return rvalue(rvalue(e));
-			}
+		if (isstruct(p->type) && !IR->wants_argb) {
+			e = tree(mkop(op,voidptype), ptr(ptr(p->type)), NULL, NULL);
+			e->u.sym = p;
+			return rvalue(rvalue(e));
+		}
 	} else if (p->sclass == EXTERN) {
 		assert(p->u.alias);
 		p = p->u.alias;
@@ -523,6 +535,11 @@ Tree rvalue(Tree p) {
 	return tree(mkop(INDIR,ty), ty, p, NULL);
 }
 
+/* ch8: lvalue must be called with only trees that represent an rvalue
+ * -- the contents of an addressable location. The INDIR tree added by
+ * rvalue also signals that a tree is a valid lvalue, and the address
+ * is exposed by tearing off the INDIR. lvalue implements this check
+ * and transformation. */
 Tree lvalue(Tree p) {
 	if (generic(p->op) != INDIR) {
 		error("lvalue required\n");
