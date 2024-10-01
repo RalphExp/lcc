@@ -1,3 +1,5 @@
+/* implements the parsing functions that recognize and translate expressions. */
+
 #include "c.h"
 
 static char rcsid[] = "$Id$";
@@ -80,12 +82,11 @@ Tree expr1(int tok) {
 	|| (prec[t] >= 11 && prec[t] <= 13)) { // +=, -=, *=, /=, %=, <<=, >>=
 		int op = t;
 		t = gettok();
+		// XXX: notice the recursion here for right associative
 		if (oper[op] == ASGN)
-            // XXX: notice the right recursion here for right associative
 			p = asgntree(ASGN, p, value(expr1(0)));
 		else {
 			expect('=');
-            // XXX: notice the right recursion here for right associative
 			/* ch8: incr is one place where the front end builds a dag
 			 * instead of a tree. */
 			p = incr(op, p, expr1(0));
@@ -175,19 +176,23 @@ static Tree unary(void) {
 	case '*':
         // pointer only check for function/array
 		t = gettok(); p = unary(); p = pointer(p);
+		// for function and array no INDIR are emitted
 		if (isptr(p->type) && (isfunc(p->type->type) || isarray(p->type->type)))
 			p = retype(p, p->type->type);
 		else {
 			if (YYnull)
 				p = nullcheck(p);
+			// should be pointer type
 			p = rvalue(p);
 		}
 		break;
 	case '&':
 		t = gettok(); p = unary();
 		if (isarray(p->type) || isfunc(p->type))
+			// for function and array don't need to check INDIR
 			p = retype(p, ptr(p->type));
 		else
+			// check if is INDIR, if it's, then remove INDIR
 			p = lvalue(p);
 		if (isaddrop(p->op) && p->u.sym->sclass == REGISTER)
 			error("invalid operand of unary &; `%s' is declared register\n", p->u.sym->name);
@@ -428,6 +433,7 @@ static Tree primary(void) {
 		break;
 	case ID:
 		if (tsym == NULL) {
+			// see lex.c, which will look up ID in identifiers table
 			Symbol p = install(token, &identifiers, level, PERM);
 			p->src = src;
 			if (getchr() == '(') {
@@ -504,6 +510,11 @@ Tree idtree(Symbol p) {
 		op = ADDRG;
 	else if (p->scope == PARAM) {
 		op = ADDRF;
+		/* ch8: ???
+		 * If wants_argb is zero, the front end implements structure arguments
+         * by copying them at a call and passing pointers to the copies. Thus,
+         * a reference to a structure parameter needs another indirection
+         * to access the structure itself. */
 		if (isstruct(p->type) && !IR->wants_argb) {
 			e = tree(mkop(op,voidptype), ptr(ptr(p->type)), NULL, NULL);
 			e->u.sym = p;
@@ -584,6 +595,7 @@ int hascall(Tree p) {
 		return 1;
 	return hascall(p->kids[0]) || hascall(p->kids[1]);
 }
+
 Type binary(Type xty, Type yty) {
 #define xx(t) if (xty == t || yty == t) return t
 	xx(longdouble);
@@ -604,6 +616,9 @@ Type binary(Type xty, Type yty) {
 #undef xx
 }
 
+/* ch9: in fact pointer is different from ptr(which is a real pointer op),
+ * pointer decays array into pointer and decays function into function
+ * pointer. */
 Tree pointer(Tree p) {
 	if (isarray(p->type))
 		/* assert(p->op != RIGHT || p->u.sym == NULL), */
@@ -613,6 +628,8 @@ Tree pointer(Tree p) {
 	return p;
 }
 
+/* ch9: cond returns a tree whose outcome is true when the
+ * value is nonzero.*/
 Tree cond(Tree p) {
 	int op = generic(rightkid(p)->op);
 
@@ -623,6 +640,11 @@ Tree cond(Tree p) {
 	p = pointer(p);
 	return (*optree[NEQ])(NE, p, consttree(0, inttype));
 }
+
+/* ch9: cast has three parts that correspond to the steps just outlined. First,
+ * p is converted to its supertype, which is D, I, or U. Then, it's converted to
+ * the supertype of the destination type, if necessary. Finally, it's converted
+ * to the destination type.*/
 Tree cast(Tree p, Type type) {
 	Type src, dst;
 
@@ -631,6 +653,9 @@ Tree cast(Tree p, Type type) {
 		return p;
 	dst = unqual(type);
 	src = unqual(p->type);
+
+	/* ch9: step1: convert to src's supertype which makes all signed integers ints,
+     * floats doubles, and pointers unsigneds */
 	if (src->op != dst->op || src->size != dst->size) {
 		switch (src->op) {
 		case INT:
@@ -654,10 +679,11 @@ Tree cast(Tree p, Type type) {
 		case FLOAT:
 			break;
 		default: assert(0);
-		}
+		} // end switch
 		{
 			src = unqual(p->type);
 			dst = super(dst);
+			// step2: convert to dst's supertype's supertype
 			if (src->op != dst->op)
 				switch (src->op) {
 				case INT:

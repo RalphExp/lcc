@@ -1,3 +1,6 @@
+/* implements low-level functions that manage trees, which are 
+ * the internal, intermediate representation for expressions.*/
+
 #include "c.h"
 
 static char rcsid[] = "$Id$";
@@ -12,6 +15,7 @@ static struct nodeid {
 
 static void printtree1(Tree, int, int);
 
+/* ch8: allocated, initialized, and returned a new Tree. */
 Tree tree(int op, Type type, Tree left, Tree right) {
 	Tree p;
 

@@ -1,3 +1,7 @@
+/* implements type-checking functions that ensure the semantic 
+ * validity of expressions, and it exports functions that build and
+ * manipulate trees*/
+
 #include "c.h"
 
 static char rcsid[] = "$Id$";
@@ -234,6 +238,7 @@ static int isnullptr(Tree e) {
 	     || ty->op == UNSIGNED && e->u.v.u == 0
 	     || isvoidptr(ty)      && e->u.v.p == NULL);
 }
+
 Tree eqtree(int op, Tree l, Tree r) {
 	Type xty = unqual(l->type), yty = unqual(r->type);
 

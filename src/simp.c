@@ -204,6 +204,10 @@ int intexpr(int tok, int n) {
 	needconst--;
 	return n;
 }
+
+/* ch9: simplify builds trees just like tree, but folds constants, if possible,
+ * and, if a generic operator is given as its first argument, simp1ify forms the
+ * type-specific operator from its first and second arguments. */
 Tree simplify(int op, Type ty, Tree l, Tree r) {
 	int n;
 	Tree p;

@@ -364,6 +364,7 @@ struct tree {
 		Field field;
 	} u;
 };
+
 enum {
 	AND=38<<4,
 	NOT=39<<4,
@@ -372,6 +373,7 @@ enum {
 	RIGHT=42<<4,
 	FIELD=43<<4
 };
+
 struct type {
 	int op; 	// The op field holds an integer operator code(FLOAT, INT, UNSIGNED)
 	Type type;  // and the type field holds the operand.
