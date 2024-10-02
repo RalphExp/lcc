@@ -52,7 +52,12 @@ Tree expr(int tok) {
 		q = pointer(expr1(0));
 		p = tree(RIGHT, q->type, root(value(p)), q);
 	}
-	if (tok)	
+
+	/* ch8: If tok is nonzero, but the expression is followed by
+	 * something else, test skips input up to the next occurrence
+	 * of tok or a token in stop, which is the set tok U { IF ID '}' }
+	 */
+	if (tok)
 		test(tok, stop);
 	return p;
 }
@@ -87,8 +92,9 @@ Tree expr1(int tok) {
 			p = asgntree(ASGN, p, value(expr1(0)));
 		else {
 			expect('=');
-			/* ch8: incr is one place where the front end builds a dag
-			 * instead of a tree. */
+			/* ch8: incr builds trees for expressions of form v ®= e for
+			 * any binary operator ®, lvalue v, and rvalue e. incr is one
+			 * place where the front end builds a dag instead of a tree. */
 			p = incr(op, p, expr1(0));
 		}
 	}
