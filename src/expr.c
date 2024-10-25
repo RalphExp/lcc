@@ -76,7 +76,7 @@ Tree expr1(int tok) {
 	// recursive parsing higher priority expression
 	Tree p = expr2();
 
-    /* ch8: this code appears to treat them as two tokens; expr3,
+	/* ch8: this code appears to treat them as two tokens; expr3,
 	 * avoids this erroneous interpretation by recognizing tokens
 	 * like + as binary operators only when they aren't immediately
 	 * followed by an equals sign. Thus, exprl correctly interprets
@@ -137,6 +137,7 @@ static Tree expr2(void) {
 	return p;
 }
 
+/* if p->op is compare operator, change the tree to condtree. */
 Tree value(Tree p) {
 	int op = generic(rightkid(p)->op);
 
@@ -153,7 +154,7 @@ static Tree expr3(int k) {
 	int k1;
 	Tree p = unary();
 
-    // t is current token
+	// t is current token
 	for (k1 = prec[t]; k1 >= k; k1--)
 		while (prec[t] == k1 && *cp != '=') {
 			Tree r;
@@ -163,8 +164,8 @@ static Tree expr3(int k) {
 			pt = src;
 			p = pointer(p);
 			if (op == ANDAND || op == OROR) {
-                /* ch8: a trick to make && and || right associative,
-                 * for short circuit evaluation */
+ 				/* ch8: a trick to make && and || right associative,
+				 * for short circuit evaluation */
 				r = pointer(expr3(k1));
 				if (events.points)
 					apply(events.points, &pt, &r);
@@ -213,6 +214,10 @@ static Tree unary(void) {
 			typeerror(ADD, p, NULL);
 		break;
 	case '-':
+	    /* ch9: The operand of the unary - operator shall have arithmetic type.
+         The result of the unary - operator is the negative of its operand. The
+         integral promotion is performed on the operand, and the result has the
+         promoted type.*/
 		t = gettok(); p = unary(); p = pointer(p);
 		if (isarith(p->type)) {
 			Type ty = promote(p->type);
@@ -271,7 +276,7 @@ static Tree unary(void) {
 			if (op == TYPECODE)
 				p = cnsttree(inttype, (long)ty->op);
 			else { /* ch8: sizeof cannot be applied to functions, incomplete
-                    * types, or those derived from bit fields. */
+					* types, or those derived from bit fields. */
 				if (isfunc(ty) || ty->size == 0)
 					error("invalid type argument `%t' to `sizeof'\n", ty);
 				else if (p && rightkid(p)->op == FIELD)
@@ -435,6 +440,10 @@ static Tree primary(void) {
 		if (tsym->u.c.loc == NULL)
 			// generate a label for this constant
 		   	tsym->u.c.loc = genident(STATIC, tsym->type, GLOBAL);
+
+		/* ch8: The generated variable and its initialization are emitted at the end
+		 * of the compilation by finalize. The tree for strings is the tree for the
+		 * generated identifier.*/
 		p = idtree(tsym->u.c.loc);
 		break;
 	case ID:
@@ -602,6 +611,9 @@ int hascall(Tree p) {
 	return hascall(p->kids[0]) || hascall(p->kids[1]);
 }
 
+/* ch9: binary implements the usual arithmetic conversions, it takes
+ two arithmetic types and returns the type of the result for any binary
+ arithmetic operator. */
 Type binary(Type xty, Type yty) {
 #define xx(t) if (xty == t || yty == t) return t
 	xx(longdouble);
@@ -635,7 +647,7 @@ Tree pointer(Tree p) {
 }
 
 /* ch9: cond returns a tree whose outcome is true when the
- * value is nonzero.*/
+ * value is nonzero. e.g. if (p) {...} */
 Tree cond(Tree p) {
 	int op = generic(rightkid(p)->op);
 
@@ -689,13 +701,17 @@ Tree cast(Tree p, Type type) {
 		{
 			src = unqual(p->type);
 			dst = super(dst);
-			// step2: convert to dst's supertype's supertype
+			// step2: convert to dst's supertype
 			if (src->op != dst->op)
 				switch (src->op) {
 				case INT:
 					p = simplify(CVI, dst, p, NULL);
 					break;
 				case UNSIGNED:
+				    /* ch9: An unsigned u can be converted to a double by constructing
+					an expression equivalent to 2.*(int)(u>>l) + (int)(u&l), u>>1 vacates
+					the sign bit so that the shifted result, which is equal to u/2, can
+					be converted to a double with an integer-to-double conversion.*/
 					if (isfloat(dst)) {
 						Type ssrc = signedint(src);
 						Tree two = cnsttree(longdouble, (long double)2.0);
@@ -712,6 +728,7 @@ Tree cast(Tree p, Type type) {
 						p = simplify(CVU, dst, p, NULL);
 					break;
 				case FLOAT:
+					/* TODO: */
 					if (isunsigned(dst)) {
 						Type sdst = signedint(dst);
 						Tree c = cast(cnsttree(longdouble, (long double)sdst->u.sym->u.limits.max.i + 1), src);
