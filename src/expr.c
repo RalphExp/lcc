@@ -194,6 +194,9 @@ static Tree unary(void) {
 		}
 		break;
 	case '&':
+	    /* ch9: The operand of the unary & operator shall be either a function designator
+         or an lvalue that designates an object that is not a bit-field and not declared
+		 with the register storage-class specifier.*/
 		t = gettok(); p = unary();
 		if (isarray(p->type) || isfunc(p->type))
 			// for function and array don't need to check INDIR
@@ -204,6 +207,10 @@ static Tree unary(void) {
 		if (isaddrop(p->op) && p->u.sym->sclass == REGISTER)
 			error("invalid operand of unary &; `%s' is declared register\n", p->u.sym->name);
 		else if (isaddrop(p->op))
+		    /* ch9: The front end changes the storage class of frequently referenced locals
+             and parameters to REGISTER before it passes them to the back end. But
+             it must not change the storage class of variables whose addresses are
+             taken, which are those symbols with addressed lit.*/
 			p->u.sym->addressed = 1;
 		break;
 	case '+':
@@ -733,7 +740,7 @@ Tree cast(Tree p, Type type) {
 						Type sdst = signedint(dst);
 						Tree c = cast(cnsttree(longdouble, (long double)sdst->u.sym->u.limits.max.i + 1), src);
 						p = condtree(
-							simplify(GE, src, p, c),
+							simplify(GE, src, p, c), // if p >= c
 							(*optree['+'])(ADD,
 								cast(cast(simplify(SUB, src, p, c), sdst), dst),
 								cast(cnsttree(unsignedlong, (unsigned long)sdst->u.sym->u.limits.max.i + 1), dst)),
