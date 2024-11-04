@@ -98,7 +98,7 @@ Tree expr1(int tok) {
 			p = incr(op, p, expr1(0));
 		}
 	}
-	if (tok)	
+	if (tok)
 		test(tok, stop);
 	return p;
 }
@@ -171,7 +171,7 @@ static Tree expr3(int k) {
 					apply(events.points, &pt, &r);
 			} else
 				r = pointer(expr3(k1 + 1));
-			p = (*optree[op])(oper[op], p, r); 
+			p = (*optree[op])(oper[op], p, r);
 		}
 	return p;
 }
@@ -293,12 +293,14 @@ static Tree unary(void) {
 		}
 		break;
 	case '(':
+		// type cast
 		t = gettok();
 		if (istypename(t, tsym)) {
 			Type ty, ty1 = typename(), pty;
 			expect(')');
 			ty = unqual(ty1);
 			if (isenum(ty)) {
+				// XXX: if it's enum, get the underlying integral type
 				Type ty2 = ty->type;
 				if (isconst(ty1))
 					ty2 = qual(CONST, ty2);
@@ -306,18 +308,18 @@ static Tree unary(void) {
 					ty2 = qual(VOLATILE, ty2);
 				ty1 = ty2;
 				ty = ty->type;
+				// XXX: now ty1 is the underlying integral type(maybe with const/volatile)
+				// ty is the underlying type without const/volatile
 			}
-			p = pointer(unary());
+			p = pointer(unary()); // p is a tree
 			pty = p->type;
 			if (isenum(pty))
 				pty = pty->type;
-			if (isarith(pty) && isarith(ty)
-			||  isptr(pty)   && isptr(ty)) {
+			if (isarith(pty) && isarith(ty) || isptr(pty) && isptr(ty)) {
 				explicitCast++;
 				p = cast(p, ty);
 				explicitCast--;
-			} else if (isptr(pty) && isint(ty)
-			||       isint(pty) && isptr(ty)) {
+			} else if (isptr(pty) && isint(ty) || isint(pty) && isptr(ty)) {
 				if (Aflag >= 1 && ty->size < pty->size)
 					warning("conversion from `%t' to `%t' is compiler dependent\n", p->type, ty);
 
@@ -833,6 +835,7 @@ char *funcname(Tree f) {
 	return "a function";
 }
 
+/* TODO: */
 static Tree nullcheck(Tree p) {
 	if (!needconst && YYnull && isptr(p->type)) {
 		p = value(p);
