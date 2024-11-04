@@ -371,10 +371,15 @@ static Tree postfix(Tree p) {
 					else if (isptr(q->type))
 						q = nullcheck(q);
 				p = (*optree['+'])(ADD, pointer(p), pointer(q));
-				if (isptr(p->type) && isarray(p->type->type))
+				if (isptr(p->type) && isarray(p->type->type)) {
+					/* ch9: n-dimensional arrays, e.g., if p is declared int p[10][20],
+					 p[q] refers to the qth row, which is has type (ARRAY 20 (INT)),
+					 but p[q] is *NOT* an lvalue. */
 					p = retype(p, p->type->type);
-				else
+				} else {
+					// XXX: p[q] *IS* an lvalue in this case 1-dim array
 					p = rvalue(p);
+				}
 			}
 			break;
 		case '(': {
