@@ -330,6 +330,10 @@ static Tree unary(void) {
 				ty1 = inttype;
 			}
 			if (generic(p->op) == INDIR || ty->size == 0)
+				/* ch9: A cast is *NOT* an lvalue, so if p is an INDIR tree,
+				it's hidden under a RIGHT tree, which keeps lvalue from
+				accepting it as an lvalue. XXX: e.g.
+				int a = 0; (short)a = 1; is *NOT* allowed. */
 				p = tree(RIGHT, ty1, NULL, p);
 			else
 				p = retype(p, ty1);
