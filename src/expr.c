@@ -377,7 +377,7 @@ static Tree postfix(Tree p) {
 					 but p[q] is *NOT* an lvalue. */
 					p = retype(p, p->type->type);
 				} else {
-					// XXX: p[q] *IS* an lvalue in this case 1-dim array
+					// XXX: p[q] *IS* an lvalue in the case of 1-dim array
 					p = rvalue(p);
 				}
 			}
@@ -398,11 +398,17 @@ static Tree postfix(Tree p) {
 				p = call(p, ty, pt);
 			}
 			break;
-		case '.':
+		case '.': /* ch9: References to fields are similar to subscripting;
+			they yield trees that refer to the rvalue of the indicated field
+			and are thus lvalues, or, for array fields, trees that refer to
+			the address of the field.*/
 			t = gettok();
 			if (t == ID) {
 				if (isstruct(p->type)) {
+					// XXX: now q should be a pointer
 					Tree q = addrof(p);
+					/* ch9: field calls fieldref, which returns the Field that
+					gives the type and location of the field. */
 					p = field(q, token);
 					q = rightkid(q);
 					if (isaddrop(q->op) && q->u.sym->temporary)
@@ -803,9 +809,13 @@ Tree field(Tree p, const char *name) {
 		ty = deref(ty);
 	ty1 = ty;
 	ty = unqual(ty);
+	// XXX: ty is the unqual type of ty1
 	if ((q = fieldref(name, ty)) != NULL) {
 		if (isarray(q->type)) {
 			ty = q->type->type;
+			/* ch9: If a structure type is declared const or volatile, references
+			 to its fields must be similarly qualified even though the qualifiers
+			are not permitted in field declarators. */
 			if (isconst(ty1) && !isconst(ty))
 				ty = qual(CONST, ty);
 			if (isvolatile(ty1) && !isvolatile(ty))
@@ -822,9 +832,12 @@ Tree field(Tree p, const char *name) {
 		if (YYcheck && !isaddrop(p->op) && q->offset > 0)	/* omit */
 			p = nullcall(ty, YYcheck, p, consttree(q->offset, inttype));	/* omit */
 		else					/* omit */
+		// XXX: type of p is pointer
+		/* ch9: simplify returns a tree for the address of the field, or the address of the
+         unsigned that holds a bit field. note that struct support bit field */
 		p = simplify(ADD+P, ty, p, consttree(q->offset, signedptr));
 
-		if (q->lsb) {
+		if (q->lsb) { // XXX: is bit field?
 			p = tree(FIELD, ty->type, rvalue(p), NULL);
 			p->u.field = q;
 		} else if (!isarray(q->type))
