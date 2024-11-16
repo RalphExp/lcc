@@ -383,14 +383,18 @@ static Tree postfix(Tree p) {
 			}
 			break;
 		case '(': {
+			/* ch9: function call:
+			 The case in postfix checks the type of the function expression and
+			 lets call to do most of the work. */
 				Type ty;
 				Coordinate pt;
 				p = pointer(p);
-				if (isptr(p->type) && isfunc(p->type->type))
+				if (isptr(p->type) && isfunc(p->type->type)) {
 					ty = p->type->type;
-				else {
+				} else {
 					error("found `%t' expected a function\n", p->type);
 					ty = func(voidtype, NULL, 1);
+					// XXX: error occurs, make p a function
 					p = retype(p, ptr(ty));
 				}
 				pt = src;
@@ -549,7 +553,7 @@ Tree idtree(Symbol p) {
 		op = ADDRG;
 	else if (p->scope == PARAM) {
 		op = ADDRF;
-		/* ch8: ???
+		/* ch8: TODO:
 		 * If wants_argb is zero, the front end implements structure arguments
          * by copying them at a call and passing pointers to the copies. Thus,
          * a reference to a structure parameter needs another indirection

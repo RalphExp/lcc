@@ -1,4 +1,4 @@
-/* implements type-checking functions that ensure the semantic 
+/* implements type-checking functions that ensure the semantic
  * validity of expressions, and it exports functions that build and
  * manipulate trees*/
 
@@ -21,7 +21,13 @@ Tree (*optree[])(int, Tree, Tree) = {
 #define yy(a,b,c,d,e,f,g) e,
 #include "token.h"
 };
+
+// @param fty: must be function type
 Tree call(Tree f, Type fty, Coordinate src) {
+	/* ch9: counts the number of actual arguments args is the root of
+	 the argument tree, and r is the root of the RIGHT tree that holds
+     arguments or function expressions that include calls. For the example
+	 shown in Figure 9.2, r points to the CALL+I tree.*/
 	int n = 0;
 	Tree args = NULL, r = NULL, e;
 	Type *proto, rty = unqual(freturn(fty));
@@ -32,6 +38,8 @@ Tree call(Tree f, Type fty, Coordinate src) {
 	else
 		proto = fty->u.f.proto;
 	if (hascall(f))
+		// if the tree f is a call or has a call subtree
+		// for the first call, hascall must be true, e.g. r is the CALL+B node??
 		r = f;
 	if (isstruct(rty))
 		{
@@ -42,33 +50,38 @@ Tree call(Tree f, Type fty, Coordinate src) {
 	if (t != ')')
 		for (;;) {
 			Tree q = pointer(expr1(0));
-			if (proto && *proto && *proto != voidtype)
-				{
-					Type aty;
-					q = value(q);
-					aty = assign(*proto, q);
-					if (aty)
-						q = cast(q, aty);
-					else
-						error("type error in argument %d to %s; found `%t' expected `%t'\n", n + 1, funcname(f),
+			/* ch9: If a prototype specifies a variable length argument list
+			(by ending in , ... ), there are at least two types in the
+			prototype array and the last one is void type. Actual arguments beyond
+			the last explicit argument are passed in the same way as arguments to
+			old-style functions are passed. */
+			if (proto && *proto && *proto != voidtype) {
+				Type aty;
+				q = value(q);
+				/* ch9: New-style arguments are passed as if the actual argument were
+				assigned to the formal parameter. No assignment is actually made because
+				the argument is carried by an ARG tree, but the argument can be typechecked
+				with assign, which type-checks assignments. */
+				aty = assign(*proto, q);
+				if (aty)
+					q = cast(q, aty);
+				else
+					error("type error in argument %d to %s; found `%t' expected `%t'\n", n + 1, funcname(f),
+						q->type, *proto);
+				if ((isint(q->type) || isenum(q->type))
+				&& q->type->size != inttype->size)
+					q = cast(q, promote(q->type));
+				++proto;
+			} else {
+				if (!fty->u.f.oldstyle && *proto == NULL)
+					error("too many arguments to %s\n", funcname(f));
+				q = value(q);
+				if (isarray(q->type) || q->type->size == 0)
+					error("type error in argument %d to %s; `%t' is illegal\n", n + 1, funcname(f), q->type);
 
-							q->type, *proto);
-					if ((isint(q->type) || isenum(q->type))
-					&& q->type->size != inttype->size)
-						q = cast(q, promote(q->type));
-					++proto;
-				}
-			else
-				{
-					if (!fty->u.f.oldstyle && *proto == NULL)
-						error("too many arguments to %s\n", funcname(f));
-					q = value(q);
-					if (isarray(q->type) || q->type->size == 0)
-						error("type error in argument %d to %s; `%t' is illegal\n", n + 1, funcname(f), q->type);
-
-					else
-						q = cast(q, promote(q->type));
-				}
+				else
+					q = cast(q, promote(q->type));
+			}
 			if (!IR->wants_argb && isstruct(q->type))
 				if (iscallb(q))
 					q = addrof(q);
@@ -92,6 +105,7 @@ Tree call(Tree f, Type fty, Coordinate src) {
 			t = gettok();
 		}
 	expect(')');
+	// ch9: tests if p roto points to a formal parameter type, when there is a prototype.
 	if (proto && *proto && *proto != voidtype)
 		error("insufficient number of arguments to %s\n",
 			funcname(f));
@@ -102,6 +116,7 @@ Tree call(Tree f, Type fty, Coordinate src) {
 		apply(events.calls, &src, &e);
 	return e;
 }
+
 Tree calltree(Tree f, Type ty, Tree args, Symbol t3) {
 	Tree p;
 
@@ -156,7 +171,7 @@ static Tree addtree(int op, Tree l, Tree r) {
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
 		l = cast(l, ty);
-		r = cast(r, ty);		
+		r = cast(r, ty);
 	} else if (isptr(l->type) && isint(r->type))
 		return addtree(ADD, r, l);
 	else if (  isptr(r->type) && isint(l->type)
@@ -265,14 +280,18 @@ Type assign(Type xty, Tree e) {
 		xty = xty->type;
 	if (xty->size == 0 || yty->size == 0)
 		return NULL;
-	if ( isarith(xty) && isarith(yty)
-	||  isstruct(xty) && xty == yty)
+	// both are arithmetic or both are the same struct type
+	if (isarith(xty) && isarith(yty)
+	|| isstruct(xty) && xty == yty)
 		return xty;
+	// if xtyp is pointer and e's value is 0
 	if (isptr(xty) && isnullptr(e))
 		return xty;
+	// 1) both are pointers and at least one is void*
+	// 2) but const value can not be passed as non-const formal parameter
 	if ((isvoidptr(xty) && isptr(yty)
-	  || isptr(xty)     && isvoidptr(yty))
-	&& (  (isconst(xty->type)    || !isconst(yty->type))
+	  || isptr(xty) && isvoidptr(yty))
+	&& ((isconst(xty->type) || !isconst(yty->type))
 	   && (isvolatile(xty->type) || !isvolatile(yty->type))))
 		return xty;
 
@@ -459,7 +478,7 @@ Tree bittree(int op, Tree l, Tree r) {
 	if (isint(l->type) && isint(r->type)) {
  		ty = binary(l->type, r->type);
 		l = cast(l, ty);
-		r = cast(r, ty);		
+		r = cast(r, ty);
 	} else
 		typeerror(op, l, r);
 	return simplify(op, ty, l, r);
@@ -472,7 +491,7 @@ static Tree multree(int op, Tree l, Tree r) {
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
 		l = cast(l, ty);
-		r = cast(r, ty);		
+		r = cast(r, ty);
 	} else
 		typeerror(op, l, r);
 	return simplify(op, ty, l, r);
@@ -499,7 +518,7 @@ static Tree subtree(int op, Tree l, Tree r) {
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
 		l = cast(l, ty);
-		r = cast(r, ty);		
+		r = cast(r, ty);
 	} else if (isptr(l->type) && !isfunc(l->type->type) && isint(r->type)) {
 		ty = unqual(l->type);
 		n = unqual(ty->type)->size;
