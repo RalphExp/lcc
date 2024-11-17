@@ -349,7 +349,10 @@ static Tree unary(void) {
 static Tree postfix(Tree p) {
 	for (;;)
 		switch (t) {
-		case INCR: // post increment XXX: why two RIGHT?
+		case INCR: // ch8: p166, two RIGHTs are used here
+		    // because we need temporary variable to hold the value
+			// RIGHT instruction can create temporary variable.
+			// also see figure 8.3 at p167
 			p = tree(RIGHT, p->type,
 					tree(RIGHT, p->type, p, incr(t, p, consttree(1, inttype))),
 				p);

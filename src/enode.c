@@ -41,13 +41,12 @@ Tree call(Tree f, Type fty, Coordinate src) {
 		// if the tree f is a call or has a call subtree
 		// for the first call, hascall must be true, e.g. r is the CALL+B node??
 		r = f;
-	if (isstruct(rty))
-		{
-			t3 = temporary(AUTO, unqual(rty));
-			if (rty->size == 0)
-				error("illegal use of incomplete type `%t'\n", rty);
-		}
-	if (t != ')')
+	if (isstruct(rty)) {
+		t3 = temporary(AUTO, unqual(rty));
+		if (rty->size == 0)
+			error("illegal use of incomplete type `%t'\n", rty);
+	}
+	if (t != ')') {
 		for (;;) {
 			Tree q = pointer(expr1(0));
 			/* ch9: If a prototype specifies a variable length argument list
@@ -82,15 +81,16 @@ Tree call(Tree f, Type fty, Coordinate src) {
 				else
 					q = cast(q, promote(q->type));
 			}
-			if (!IR->wants_argb && isstruct(q->type))
-				if (iscallb(q))
+			if (!IR->wants_argb && isstruct(q->type)) {
+				if (iscallb(q)) {
 					q = addrof(q);
-				else {
+				} else {
 					Symbol t1 = temporary(AUTO, unqual(q->type));
 					q = asgn(t1, q);
 					q = tree(RIGHT, ptr(t1->type),
 						root(q), lvalue(idtree(t1)));
 				}
+			}
 			if (q->type->size == 0)
 				q->type = inttype;
 			if (hascall(q))
@@ -103,7 +103,8 @@ Tree call(Tree f, Type fty, Coordinate src) {
 			if (t != ',')
 				break;
 			t = gettok();
-		}
+		} // end for
+	} // end if
 	expect(')');
 	// ch9: tests if p roto points to a formal parameter type, when there is a prototype.
 	if (proto && *proto && *proto != voidtype)
@@ -111,6 +112,7 @@ Tree call(Tree f, Type fty, Coordinate src) {
 			funcname(f));
 	if (r)
 		args = tree(RIGHT, voidtype, r, args);
+	// ch9: create a tree like fig. 9.2 p183
 	e = calltree(f, rty, args, t3);
 	if (events.calls)
 		apply(events.calls, &src, &e);
@@ -119,10 +121,9 @@ Tree call(Tree f, Type fty, Coordinate src) {
 
 Tree calltree(Tree f, Type ty, Tree args, Symbol t3) {
 	Tree p;
-
 	if (args)
 		f = tree(RIGHT, f->type, args, f);
-	if (isstruct(ty))
+	if (isstruct(ty)) // ch9: p190 fig.
 		assert(t3),
 		p = tree(RIGHT, ty,
 			tree(CALL+B, ty, f, addrof(idtree(t3))),
@@ -133,12 +134,15 @@ Tree calltree(Tree f, Type ty, Tree args, Symbol t3) {
 			rty = unqual(ty)->type;
 		if (!isfloat(rty))
 			rty = promote(rty);
+		// XXX: because lcc can only use CALL+I, so lcc has to
+		// promote the type before CALL+I
 		p = tree(mkop(CALL, rty), rty, f, NULL);
 		if (isptr(ty) || p->type->size > ty->size)
 			p = cast(p, ty);
 	}
 	return p;
 }
+
 Tree vcall(Symbol func, Type ty, ...) {
 	va_list ap;
 	Tree args = NULL, e, f = pointer(idtree(func)), r = NULL;
@@ -157,6 +161,7 @@ Tree vcall(Symbol func, Type ty, ...) {
 		args = tree(RIGHT, voidtype, r, args);
 	return calltree(f, ty, args, NULL);
 }
+
 int iscallb(Tree e) {
 	return e->op == RIGHT && e->kids[0] && e->kids[1]
 		&& e->kids[0]->op == CALL+B
@@ -421,6 +426,7 @@ Tree condtree(Tree e, Tree l, Tree r) {
 	p->u.sym = t1;
 	return p;
 }
+
 /* addrof - address of p */
 Tree addrof(Tree p) {
 	Tree q = p;
