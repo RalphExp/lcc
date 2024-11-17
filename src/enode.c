@@ -83,9 +83,14 @@ Tree call(Tree f, Type fty, Coordinate src) {
 			}
 			if (!IR->wants_argb && isstruct(q->type)) {
 				if (iscallb(q)) {
+					/* ch9: In this and similar cases, copying the actual argument
+					can be avoided because it already resides in a temporary.
+					so use addrof to get the address of the temporary variable. */
 					q = addrof(q);
 				} else {
 					Symbol t1 = temporary(AUTO, unqual(q->type));
+					/* ch9:asgn is an internal form of assignment that builds
+					and returns a tree for assigning e to the symbol t.*/
 					q = asgn(t1, q);
 					q = tree(RIGHT, ptr(t1->type),
 						root(q), lvalue(idtree(t1)));
@@ -126,8 +131,8 @@ Tree calltree(Tree f, Type ty, Tree args, Symbol t3) {
 	if (isstruct(ty)) // ch9: p190 fig.
 		assert(t3),
 		p = tree(RIGHT, ty,
-			tree(CALL+B, ty, f, addrof(idtree(t3))),
-			idtree(t3));
+			tree(CALL+B, ty, f, addrof(idtree(t3))), // addrof is ADDR instruction
+			idtree(t3)); // idtree is INDIR instruction
 	else {
 		Type rty = ty;
 		if (isenum(ty))
@@ -162,6 +167,7 @@ Tree vcall(Symbol func, Type ty, ...) {
 	return calltree(f, ty, args, NULL);
 }
 
+/* ch9: p191 */
 int iscallb(Tree e) {
 	return e->op == RIGHT && e->kids[0] && e->kids[1]
 		&& e->kids[0]->op == CALL+B
@@ -277,6 +283,10 @@ Tree eqtree(int op, Tree l, Tree r) {
 	return cmptree(op, l, r);
 }
 
+/* ch9: assign (xty, e) performs the necessary type-checking for any
+assignment. It checks the legality of assigning the tree e to an lvalue
+that holds a value of type xty, and returns xty if the assignment is
+legal or null if it's illegal.*/
 Type assign(Type xty, Tree e) {
 	Type yty = unqual(e->type);
 
@@ -438,15 +448,18 @@ Tree addrof(Tree p) {
 			q = q->kids[1] ? q->kids[1] : q->kids[0];
 			continue;
 		case ASGN:
+			// TODO: ???
 			q = q->kids[1];
 			continue;
 		case COND: {
+			// TODO: ???
 			Symbol t1 = q->u.sym;
 			q->u.sym = 0;
 			q = idtree(t1);
 			/* fall thru */
 			}
 		case INDIR:
+			// TODO: root
 			if (p == q)
 				return q->kids[0];
 			q = q->kids[0];
