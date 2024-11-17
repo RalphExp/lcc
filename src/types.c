@@ -367,10 +367,12 @@ int eqtype(Type ty1, Type ty2, int ret) {
 		}
 		return 0;
 	case FUNCTION:
+		// 1) check return value
 		if (eqtype(ty1->type, ty2->type, 1)) {
 			Type *p1 = ty1->u.f.proto, *p2 = ty2->u.f.proto;
 			if (p1 == p2)
 				return 1;
+			// 2) check parameter number
 			if (p1 && p2) {
 				for ( ; *p1 && *p2; p1++, p2++)
 					if (eqtype(unqual(*p1), unqual(*p2), 1) == 0)
@@ -382,7 +384,12 @@ int eqtype(Type ty1, Type ty2, int ret) {
 				if (variadic(p1 ? ty1 : ty2))
 					return 0;
 
-				// XXX: ??
+				// XXX: C has 2 styles of parameters:
+				// the new one requests the type must be explicitly declared
+				// but the old one doesn't.
+				// when compare the old style and the new style function,
+				// it seems every parameter need to be int/unsigned int/double,
+				// otherwise they are not the same. 
 				if (p1 == NULL)
 					p1 = p2;
 				for ( ; *p1; p1++) {

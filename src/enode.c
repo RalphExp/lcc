@@ -70,6 +70,7 @@ Tree call(Tree f, Type fty, Coordinate src) {
 						q->type, *proto);
 				if ((isint(q->type) || isenum(q->type))
 				&& q->type->size != inttype->size)
+					// ch9: widens subinteger arguments as described above.
 					q = cast(q, promote(q->type));
 				++proto;
 			} else {
@@ -78,7 +79,6 @@ Tree call(Tree f, Type fty, Coordinate src) {
 				q = value(q);
 				if (isarray(q->type) || q->type->size == 0)
 					error("type error in argument %d to %s; `%t' is illegal\n", n + 1, funcname(f), q->type);
-
 				else
 					q = cast(q, promote(q->type));
 			}
@@ -294,14 +294,20 @@ Type assign(Type xty, Tree e) {
 	&& ((isconst(xty->type) || !isconst(yty->type))
 	   && (isvolatile(xty->type) || !isvolatile(yty->type))))
 		return xty;
-
+	// 1) both are pointers and not void* pointer
+	// 2) the underlaying type the pointer points to are the same
+	// 3) const pointer can not be passed as non-const formal parameter
 	if ((isptr(xty) && isptr(yty)
 	    && eqtype(unqual(xty->type), unqual(yty->type), 1))
-	&&  (  (isconst(xty->type)    || !isconst(yty->type))
+	&& ((isconst(xty->type)    || !isconst(yty->type))
 	    && (isvolatile(xty->type) || !isvolatile(yty->type))))
 		return xty;
+	
+	// 1) both are pointers and not void* pointer
+	// 2) const pointer can not be passed as non-const formal parameter
+	// 3) one is enum and the other is inttype
 	if (isptr(xty) && isptr(yty)
-	&& (  (isconst(xty->type)    || !isconst(yty->type))
+	&& ((isconst(xty->type)    || !isconst(yty->type))
 	   && (isvolatile(xty->type) || !isvolatile(yty->type)))) {
 		Type lty = unqual(xty->type), rty = unqual(yty->type);
 		if (isenum(lty) && rty == inttype
